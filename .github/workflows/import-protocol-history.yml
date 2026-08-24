@@ -1,0 +1,39 @@
+# © 2026 aiaiaiai · aiaiaiai.org
+# SPDX-License-Identifier: MIT
+name: Import Mind Protocol history
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    name: Import verified source history
+    runs-on: ubuntu-latest
+    steps:
+      - name: Import legacy protocol source master without rewriting commits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_REPOSITORY: 0x0sky/mind
+          DESTINATION_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git clone --bare "https://github.com/${SOURCE_REPOSITORY}.git" /tmp/mind-source.git
+          cd /tmp/mind-source.git
+
+          SOURCE_SHA="$(git rev-parse refs/heads/master)"
+          git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${DESTINATION_REPOSITORY}.git" \
+            "${SOURCE_SHA}:refs/heads/master"
+
+          git ls-remote \
+            "https://github.com/${DESTINATION_REPOSITORY}.git" \
+            refs/heads/master \
+            | grep -F "${SOURCE_SHA}"
+
+          echo "Imported source master exactly at ${SOURCE_SHA}."
+          echo "Historical release tags are intentionally not copied by this bootstrap workflow."
