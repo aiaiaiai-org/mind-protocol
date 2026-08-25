@@ -103,7 +103,18 @@ def validate_source_tag(source_tag: str, protocol: dict[str, str]) -> None:
         raise ValueError("floating branches are forbidden as concrete release sources")
 
 
-def verify_release_checkout(source_tag: str) -> None:
+def validate_release_commit(release_commit: str) -> None:
+    if len(release_commit) != 40:
+        raise ValueError("release commit must be an exact 40-character Git commit SHA")
+    try:
+        int(release_commit, 16)
+    except ValueError as error:
+        raise ValueError("release commit must be a lowercase hexadecimal Git commit SHA") from error
+    if release_commit != release_commit.lower():
+        raise ValueError("release commit must be a lowercase hexadecimal Git commit SHA")
+
+
+def verify_release_checkout(source_tag: str) -> str:
     """Prove CLI bootstrap is running from the exact immutable release tree."""
     protocol = protocol_ref()
     validate_source_tag(source_tag, protocol)
@@ -122,6 +133,7 @@ def verify_release_checkout(source_tag: str) -> None:
             "checked-out HEAD must equal the immutable protocol release tag: "
             f"HEAD {head_sha}, {source_tag} {tag_sha}"
         )
+    validate_release_commit(head_sha)
 
     dirty_contracts = git_output(
         "status",
@@ -136,6 +148,8 @@ def verify_release_checkout(source_tag: str) -> None:
             "restore protocol.yaml, conformance.yaml, compatibility.yaml, and schema/ "
             "before bootstrapping"
         )
+
+    return head_sha
 
 
 def concrete_manifest(
@@ -240,8 +254,12 @@ def identity_resource(subject: dict[str, str], display_name: str) -> dict[str, A
 
 
 def repository_metadata(
-    protocol: dict[str, str], subject: dict[str, str], source_tag: str
+    protocol: dict[str, str],
+    subject: dict[str, str],
+    source_tag: str,
+    release_commit: str,
 ) -> dict[str, Any]:
+    validate_release_commit(release_commit)
     return {
         "schema_version": 1,
         "scope": "repository_metadata",
@@ -265,12 +283,15 @@ def repository_metadata(
         "protocol_consumption": {
             "id": protocol["id"],
             "version": protocol["version"],
-            "source_repository": PROTOCOL_REPOSITORY,
-            "source_tag": source_tag,
+            "authority_repository": PROTOCOL_REPOSITORY,
+            "release_repository": PROTOCOL_REPOSITORY,
+            "release_tag": source_tag,
+            "release_commit": release_commit,
             "floating_master": "forbidden",
         },
         "fork_policy": {
-            "copy_concrete_mind_content": "forbidden",
+            "relationship_to_protocol_repository": "independent_consumer",
+            "copy_reference_instance_content": "forbidden",
             "creation_mechanism": "exact_release_bootstrap",
         },
         "version_axes": {
@@ -280,10 +301,13 @@ def repository_metadata(
     }
 
 
-def protocol_lock(protocol: dict[str, str], source_tag: str, output: Path) -> dict[str, Any]:
-    contract_files: dict[str, Any] = {}
-    for name in ("protocol.yaml", "conformance.yaml", "compatibility.yaml"):
-        contract_files[name] = {"git_blob_sha1": git_blob_sha1(output / name)}
+def protocol_lock(
+    protocol: dict[str, str],
+    source_tag: str,
+    release_commit: str,
+    output: Path,
+) -> dict[str, Any]:
+    validate_release_commit(release_commit)
 
     schemas: dict[str, Any] = {}
     for path in sorted((output / "schema").glob("*.json")):
@@ -299,16 +323,25 @@ def protocol_lock(protocol: dict[str, str], source_tag: str, output: Path) -> di
     return {
         "schema_version": 1,
         "protocol": protocol,
-        "source": {
+        "authority_repository": PROTOCOL_REPOSITORY,
+        "release_source": {
             "repository": PROTOCOL_REPOSITORY,
             "tag": source_tag,
+            "commit": release_commit,
             "floating_branch": "forbidden",
         },
-        "reference_instance": {
-            "template_authority": False,
-            "copy_content": "forbidden",
+        "protocol_descriptor": {
+            "path": "protocol.yaml",
+            "git_blob_sha1": git_blob_sha1(output / "protocol.yaml"),
         },
-        "contract_files": contract_files,
+        "release_machine_artifacts": {
+            "conformance.yaml": {
+                "git_blob_sha1": git_blob_sha1(output / "conformance.yaml")
+            },
+            "compatibility.yaml": {
+                "git_blob_sha1": git_blob_sha1(output / "compatibility.yaml")
+            },
+        },
         "vendored_contracts": schemas,
         "context_versioning": {
             "independent_from_protocol": True,
@@ -318,13 +351,16 @@ def protocol_lock(protocol: dict[str, str], source_tag: str, output: Path) -> di
 
 
 def generated_readme(
-    protocol: dict[str, str], subject: dict[str, str], source_tag: str
+    protocol: dict[str, str],
+    subject: dict[str, str],
+    source_tag: str,
+    release_commit: str,
 ) -> str:
     return f"""# mind@{subject['id']}
 
 This repository is a **concrete Mind implementation** for `{subject['type']}:{subject['id']}`.
 
-It consumes Mind Protocol `{protocol['version']}` from `aiaiaiai-org/mind-protocol` at exact immutable release tag `{source_tag}`. It does **not** define Mind Protocol.
+It consumes Mind Protocol `{protocol['version']}` from `aiaiaiai-org/mind-protocol` at exact immutable release tag `{source_tag}` and commit `{release_commit}`. It does **not** define Mind Protocol.
 
 Start with `mind-repository.yaml`, then `manifest.yaml`. Vendored protocol contracts are locked by `protocol.lock.yaml` and must not be refreshed from floating `master`.
 
@@ -347,6 +383,7 @@ def bootstrap_mind(
     output: Path,
     *,
     source_tag: str,
+    release_commit: str,
     subject_type: str,
     subject_id: str,
     display_name: str,
@@ -363,6 +400,7 @@ def bootstrap_mind(
     ensure_empty_output(output)
     protocol = protocol_ref()
     validate_source_tag(source_tag, protocol)
+    validate_release_commit(release_commit)
     subject = entity(subject_type, subject_id)
     owner = (
         entity(owner_type, owner_id)  # type: ignore[arg-type]
@@ -387,10 +425,17 @@ def bootstrap_mind(
     )
     write_yaml(output / "identity" / "module.yaml", identity_module(owner, repository_visibility))
     write_yaml(output / "identity" / "identity.yaml", identity_resource(subject, display_name))
-    write_yaml(output / "mind-repository.yaml", repository_metadata(protocol, subject, source_tag))
-    write_yaml(output / "protocol.lock.yaml", protocol_lock(protocol, source_tag, output))
+    write_yaml(
+        output / "mind-repository.yaml",
+        repository_metadata(protocol, subject, source_tag, release_commit),
+    )
+    write_yaml(
+        output / "protocol.lock.yaml",
+        protocol_lock(protocol, source_tag, release_commit, output),
+    )
     (output / "README.md").write_text(
-        generated_readme(protocol, subject, source_tag), encoding="utf-8"
+        generated_readme(protocol, subject, source_tag, release_commit),
+        encoding="utf-8",
     )
     (output / "AGENTS.md").write_text(generated_agents(subject), encoding="utf-8")
 
@@ -414,10 +459,11 @@ def parse_arguments() -> argparse.Namespace:
 def main() -> int:
     arguments = parse_arguments()
     try:
-        verify_release_checkout(arguments.source_tag)
+        release_commit = verify_release_checkout(arguments.source_tag)
         bootstrap_mind(
             arguments.output.resolve(),
             source_tag=arguments.source_tag,
+            release_commit=release_commit,
             subject_type=arguments.subject_type,
             subject_id=arguments.subject_id,
             display_name=arguments.display_name,
@@ -435,6 +481,7 @@ def main() -> int:
             {
                 "output": str(arguments.output.resolve()),
                 "source_tag": arguments.source_tag,
+                "release_commit": release_commit,
                 "subject": {"type": arguments.subject_type, "id": arguments.subject_id},
             },
             sort_keys=True,
