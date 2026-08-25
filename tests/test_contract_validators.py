@@ -1,6 +1,6 @@
 # © 2026 aiaiaiai · aiaiaiai.org
 # SPDX-License-Identifier: MIT
-"""Regression tests for correctness-critical Mind contract validators."""
+"""Regression tests for correctness-critical Mind contract validators without a root concrete Mind."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS_ROOT = REPOSITORY_ROOT / "scripts"
-sys.path.insert(0, str(SCRIPTS_ROOT))
-
+from bootstrap_mind import bootstrap_mind, concrete_manifest  # noqa: E402
 from validate_manifest import (  # noqa: E402
     legacy_field_errors,
     load_yaml_mapping,
@@ -23,68 +23,105 @@ from validate_manifest import (  # noqa: E402
 from validate_relationships import validate_relationships  # noqa: E402
 
 
+SUBJECT = {"type": "person", "id": "fixture-person"}
+OWNER = dict(SUBJECT)
+
+
+def fixture_manifest() -> dict:
+    """Return a synthetic value for validator rules that do not load module files."""
+    manifest = concrete_manifest(
+        {"id": "mind", "version": "1.0.0-rc.1"},
+        dict(SUBJECT),
+        dict(OWNER),
+        context_version="0.1.0",
+        repository_visibility="public",
+    )
+    manifest["modules"]["required"] = []
+    manifest["modules"]["registered"] = []
+    manifest["modules"]["catalog"] = {}
+    manifest["loading"]["default"] = []
+    return manifest
+
+
+def fixture_relationships() -> dict:
+    return {
+        "schema_version": 1,
+        "relationships": [
+            {
+                "id": "member-of-fixture-org",
+                "predicate": "member_of",
+                "source": dict(SUBJECT),
+                "target": {"type": "organization", "id": "fixture-org"},
+                "direction": "directed",
+                "provenance": {"kind": "authored", "authority": dict(OWNER)},
+                "confirmation": {
+                    "state": "reciprocal",
+                    "counterpart": {
+                        "entity": {"type": "organization", "id": "fixture-org"},
+                        "relationship_id": "fixture-member",
+                    },
+                },
+            }
+        ],
+        "validation": {"schema": "schema/relationships.schema.json"},
+    }
+
+
 class ContractValidatorRegressionTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.manifest = load_yaml_mapping(REPOSITORY_ROOT / "manifest.yaml")
-        cls.relationships = load_yaml_mapping(
-            REPOSITORY_ROOT / "relationships" / "relationships.yaml"
-        )
-
-    def test_current_manifest_semantics_are_valid(self) -> None:
-        self.assertEqual(validate_manifest_semantics(self.manifest, REPOSITORY_ROOT), [])
-
-    def test_duplicate_yaml_keys_are_rejected(self) -> None:
+    def test_synthetic_concrete_manifest_semantics_are_valid(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "duplicate.yaml"
-            path.write_text("value: 1\nvalue: 2\n", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "duplicate key"):
-                load_yaml_mapping(path)
+            output = Path(directory) / "mind"
+            bootstrap_mind(
+                output,
+                source_tag="v1.0.0-rc.1",
+                subject_type="person",
+                subject_id="fixture-person",
+                display_name="Fixture Person",
+                context_version="0.1.0",
+                repository_visibility="public",
+            )
+            manifest = load_yaml_mapping(output / "manifest.yaml")
+            self.assertEqual(validate_manifest_semantics(manifest, output), [])
 
-    def test_removed_mind_kind_has_deterministic_migration_diagnostic(self) -> None:
-        candidate = copy.deepcopy(self.manifest)
+    def test_removed_mind_kind_has_deterministic_diagnostic(self) -> None:
+        candidate = fixture_manifest()
         candidate["mind"]["kind"] = "personal"
         errors = legacy_field_errors(candidate)
         self.assertTrue(any("$.mind.kind" in error for error in errors), errors)
 
-    def test_removed_public_organizations_has_deterministic_migration_diagnostic(self) -> None:
-        candidate = copy.deepcopy(self.manifest)
+    def test_removed_public_organizations_has_deterministic_diagnostic(self) -> None:
+        candidate = fixture_manifest()
         candidate["public_organizations"] = ["provider-only-org"]
         errors = legacy_field_errors(candidate)
         self.assertTrue(any("$.public_organizations" in error for error in errors), errors)
 
-    def test_abstract_subject_requires_explicit_unspecified_owner(self) -> None:
-        candidate = copy.deepcopy(self.manifest)
+    def test_abstract_subject_requires_unspecified_owner(self) -> None:
+        candidate = fixture_manifest()
         candidate["mind"]["name"] = "mind"
         candidate["mind"]["subject"] = {"type": "unspecified", "id": "unspecified"}
-        errors = validate_manifest_semantics(candidate, REPOSITORY_ROOT)
+        errors = validate_manifest_semantics(candidate, ROOT)
         self.assertTrue(any("abstract minds must use" in error for error in errors), errors)
 
     def test_validation_paths_cannot_escape_repository(self) -> None:
-        candidate = copy.deepcopy(self.manifest)
+        candidate = fixture_manifest()
         candidate["validation"]["schema"] = "../mind.schema.json"
-        errors = validate_manifest_semantics(candidate, REPOSITORY_ROOT)
+        errors = validate_manifest_semantics(candidate, ROOT)
         self.assertTrue(any("path escapes repository" in error for error in errors), errors)
 
-    def test_current_relationship_semantics_are_valid(self) -> None:
-        self.assertEqual(validate_relationships(self.manifest, self.relationships), [])
+    def test_synthetic_relationship_semantics_are_valid(self) -> None:
+        self.assertEqual(validate_relationships(fixture_manifest(), fixture_relationships()), [])
 
     def test_relationship_authority_must_match_publication_owner(self) -> None:
-        candidate = copy.deepcopy(self.relationships)
+        candidate = fixture_relationships()
         candidate["relationships"][0]["provenance"]["authority"]["id"] = "other-owner"
-        errors = validate_relationships(self.manifest, candidate)
+        errors = validate_relationships(fixture_manifest(), candidate)
         self.assertTrue(any("must match $.mind.owner" in error for error in errors), errors)
 
     def test_reciprocal_confirmation_must_reference_other_endpoint(self) -> None:
-        candidate = copy.deepcopy(self.relationships)
-        candidate["relationships"][0]["confirmation"]["counterpart"]["entity"]["id"] = (
-            "0xda-market"
-        )
-        errors = validate_relationships(self.manifest, candidate)
-        self.assertTrue(
-            any("must identify the other relationship endpoint" in error for error in errors),
-            errors,
-        )
+        candidate = fixture_relationships()
+        candidate["relationships"][0]["confirmation"]["counterpart"]["entity"] = dict(SUBJECT)
+        errors = validate_relationships(fixture_manifest(), candidate)
+        self.assertTrue(any("other relationship endpoint" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

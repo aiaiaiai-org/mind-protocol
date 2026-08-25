@@ -21,7 +21,7 @@ from validate_manifest import load_json_mapping, load_yaml_mapping
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROTOCOL_REPOSITORY = "0x0sky/mind"
+PROTOCOL_REPOSITORY = "aiaiaiai-org/mind-protocol"
 CONCRETE_TYPES = ("person", "organization", "agent", "project", "product")
 RELEASE_CONTRACT_PATHS = (
     "protocol.yaml",
@@ -265,11 +265,12 @@ def repository_metadata(
         "protocol_consumption": {
             "id": protocol["id"],
             "version": protocol["version"],
+            "source_repository": PROTOCOL_REPOSITORY,
             "source_tag": source_tag,
             "floating_master": "forbidden",
         },
         "fork_policy": {
-            "copy_reference_instance_content": "forbidden",
+            "copy_concrete_mind_content": "forbidden",
             "creation_mechanism": "exact_release_bootstrap",
         },
         "version_axes": {
@@ -323,11 +324,11 @@ def generated_readme(
 
 This repository is a **concrete Mind implementation** for `{subject['type']}:{subject['id']}`.
 
-It consumes Mind Protocol `{protocol['version']}` from the exact immutable release tag `{source_tag}`. It does **not** define Mind Protocol.
+It consumes Mind Protocol `{protocol['version']}` from `aiaiaiai-org/mind-protocol` at exact immutable release tag `{source_tag}`. It does **not** define Mind Protocol.
 
-Start with `mind-repository.yaml` to determine repository role, then `manifest.yaml` for this concrete publication. Vendored protocol contracts are locked by `protocol.lock.yaml` and must not be refreshed from floating `master`.
+Start with `mind-repository.yaml`, then `manifest.yaml`. Vendored protocol contracts are locked by `protocol.lock.yaml` and must not be refreshed from floating `master`.
 
-Identity and context in this repository must be authored for this subject. Do not copy `mind@0x0sky` personal modules or infer canonical IDs from provider/GitHub account names.
+Identity and context must be authored for this subject. Do not copy authored modules from another concrete Mind or infer canonical IDs from provider/repository account names.
 """
 
 
@@ -338,7 +339,7 @@ This repository is a concrete Mind consumer for `{subject['type']}:{subject['id'
 
 Read `mind-repository.yaml` first, then `manifest.yaml` and only the modules relevant to the task. Treat vendored `protocol.yaml`, `conformance.yaml`, `compatibility.yaml`, and `schema/` as exact release contracts locked by `protocol.lock.yaml`.
 
-Do not source protocol contracts from floating branches. Do not copy content from the `mind@0x0sky` reference implementation. Do not infer canonical identity or relationships from provider metadata. Add only durable authored context for this subject and preserve the independent `mind.context_version` axis.
+Do not source protocol contracts from floating branches. Do not copy authored content from another concrete Mind. Do not infer canonical identity or relationships from provider metadata. Add only durable authored context for this subject and preserve the independent `mind.context_version` axis.
 """
 
 
@@ -384,22 +385,10 @@ def bootstrap_mind(
             repository_visibility=repository_visibility,
         ),
     )
-    write_yaml(
-        output / "identity" / "module.yaml",
-        identity_module(owner, repository_visibility),
-    )
-    write_yaml(
-        output / "identity" / "identity.yaml",
-        identity_resource(subject, display_name),
-    )
-    write_yaml(
-        output / "mind-repository.yaml",
-        repository_metadata(protocol, subject, source_tag),
-    )
-    write_yaml(
-        output / "protocol.lock.yaml",
-        protocol_lock(protocol, source_tag, output),
-    )
+    write_yaml(output / "identity" / "module.yaml", identity_module(owner, repository_visibility))
+    write_yaml(output / "identity" / "identity.yaml", identity_resource(subject, display_name))
+    write_yaml(output / "mind-repository.yaml", repository_metadata(protocol, subject, source_tag))
+    write_yaml(output / "protocol.lock.yaml", protocol_lock(protocol, source_tag, output))
     (output / "README.md").write_text(
         generated_readme(protocol, subject, source_tag), encoding="utf-8"
     )
@@ -446,10 +435,7 @@ def main() -> int:
             {
                 "output": str(arguments.output.resolve()),
                 "source_tag": arguments.source_tag,
-                "subject": {
-                    "type": arguments.subject_type,
-                    "id": arguments.subject_id,
-                },
+                "subject": {"type": arguments.subject_type, "id": arguments.subject_id},
             },
             sort_keys=True,
         )

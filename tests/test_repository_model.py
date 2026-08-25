@@ -1,13 +1,12 @@
 # © 2026 aiaiaiai · aiaiaiai.org
 # SPDX-License-Identifier: MIT
-"""Regression coverage for protocol/reference-instance repository authority routing."""
+"""Regression coverage for the pure protocol repository authority boundary."""
 
 from __future__ import annotations
 
 import sys
 import unittest
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -20,58 +19,53 @@ class RepositoryModelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.model = load_yaml_mapping(ROOT / "mind-repository.yaml")
-        cls.manifest = load_yaml_mapping(ROOT / "manifest.yaml")
 
-    def test_metadata_is_explicitly_not_a_protocol_contract(self) -> None:
+    def test_metadata_is_not_a_protocol_contract(self) -> None:
         self.assertEqual(self.model["scope"], "repository_metadata")
         self.assertFalse(self.model["protocol_contract"])
 
-    def test_repository_declares_two_distinct_roles(self) -> None:
+    def test_repository_is_only_protocol_authority(self) -> None:
+        self.assertEqual(self.model["repository"]["id"], "aiaiaiai-org/mind-protocol")
         roles = self.model["repository"]["roles"]
         self.assertTrue(roles["protocol_authority"]["enabled"])
         self.assertTrue(roles["protocol_authority"]["canonical"])
+        self.assertTrue(roles["protocol_authority"]["release_authority"])
         self.assertEqual(roles["protocol_authority"]["entrypoint"], "protocol.yaml")
-        self.assertTrue(roles["concrete_mind"]["enabled"])
-        self.assertTrue(roles["concrete_mind"]["reference_implementation"])
-        self.assertFalse(roles["concrete_mind"]["template_authority"])
+        self.assertFalse(roles["concrete_mind"]["enabled"])
 
-    def test_reference_subject_matches_concrete_manifest(self) -> None:
-        declared = self.model["repository"]["roles"]["concrete_mind"][
-            "canonical_for_subject"
-        ]
-        self.assertEqual(declared, self.manifest["mind"]["subject"])
-        self.assertEqual(declared, {"type": "person", "id": "0x0sky"})
+    def test_no_concrete_root_mind_exists(self) -> None:
+        for path in (
+            "manifest.yaml",
+            "protocol.lock.yaml",
+            "identity",
+            "relationships",
+            "knowledge",
+            "engineering",
+            "systems",
+            "writing",
+            ".assistant",
+        ):
+            self.assertFalse((ROOT / path).exists(), path)
 
-    def test_fork_policy_separates_protocol_development_from_mind_creation(self) -> None:
-        policy = self.model["fork_policy"]
-        self.assertEqual(policy["protocol_development"]["github_fork"], "allowed")
-        concrete = policy["concrete_mind_creation"]
-        self.assertEqual(
-            concrete["github_fork_of_master"], "forbidden_as_template"
-        )
-        self.assertEqual(concrete["copy_reference_instance_content"], "forbidden")
+    def test_concrete_creation_is_exact_release_bootstrap(self) -> None:
+        concrete = self.model["fork_policy"]["concrete_mind_creation"]
+        self.assertEqual(concrete["github_fork_of_master"], "forbidden_as_template")
         self.assertEqual(concrete["source"], "exact_immutable_protocol_release")
         self.assertEqual(concrete["mechanism"], "neutral_bootstrap")
-
-    def test_bootstrap_routing_and_owner_default_are_explicit(self) -> None:
         bootstrap = self.model["bootstrap"]
         self.assertEqual(bootstrap["command"], "scripts/bootstrap_mind.py")
         self.assertEqual(bootstrap["input_authority"], "exact_protocol_release_tag")
+        self.assertEqual(bootstrap["floating_master"], "forbidden_for_release_consumption")
+
+    def test_history_records_non_destructive_authority_split(self) -> None:
+        history = self.model["history"]
+        self.assertEqual(history["authority_split_source"]["repository"], "0x0sky/mind")
         self.assertEqual(
-            bootstrap["floating_master"],
-            "forbidden_for_release_consumption",
+            history["authority_split_source"]["commit"],
+            "48a81df7d8e9818d9c01f3e1fe5ac663af29a006",
         )
-        self.assertNotIn("publication_owner", bootstrap["requires_explicit"])
-        self.assertEqual(bootstrap["publication_owner"]["default"], "subject")
-        self.assertEqual(
-            bootstrap["publication_owner"]["explicit_override"], "supported"
-        )
-        self.assertEqual(
-            bootstrap["publication_owner"]["partial_override"], "forbidden"
-        )
-        self.assertEqual(
-            self.model["routing"]["new_mind_creation"], "docs/protocol/BOOTSTRAP.md"
-        )
+        self.assertEqual(history["first_formal_release"]["version"], "0.9.0")
+        self.assertTrue(history["first_formal_release"]["immutable"])
 
 
 if __name__ == "__main__":

@@ -16,14 +16,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+from bootstrap_mind import concrete_manifest  # noqa: E402
 from migrate_manifest_v2_to_v3 import migrate_manifest  # noqa: E402
-from validate_manifest import load_schema, load_yaml_mapping, schema_errors  # noqa: E402
+from validate_manifest import load_schema, schema_errors  # noqa: E402
 
 
 class ManifestV3MigrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.current = load_yaml_mapping(ROOT / "manifest.yaml")
+        cls.current = concrete_manifest(
+            {"id": "mind", "version": "0.9.0"},
+            {"type": "person", "id": "fixture-person"},
+            {"type": "person", "id": "fixture-person"},
+            context_version="0.4.0",
+            repository_visibility="public",
+        )
         cls.schema = load_schema(ROOT / "schema" / "mind.schema.json")
 
     def source_v2(self, version: str = "0.8.0") -> dict:
@@ -45,10 +52,7 @@ class ManifestV3MigrationTests(unittest.TestCase):
         self.assertEqual(migrated["mind"]["context_version"], context_version)
         self.assertNotIn("kind", migrated["mind"])
         self.assertNotIn("public_organizations", migrated)
-        self.assertEqual(
-            schema_errors(Draft202012Validator(self.schema), migrated),
-            [],
-        )
+        self.assertEqual(schema_errors(Draft202012Validator(self.schema), migrated), [])
 
     def test_nonempty_provider_projection_requires_explicit_preservation(self) -> None:
         source = self.source_v2()
@@ -57,10 +61,7 @@ class ManifestV3MigrationTests(unittest.TestCase):
         self.assertIsNone(migrated)
         self.assertTrue(any("never inferred" in error for error in errors), errors)
 
-        migrated, errors = migrate_manifest(
-            source,
-            provider_projection_preserved=True,
-        )
+        migrated, errors = migrate_manifest(source, provider_projection_preserved=True)
         self.assertEqual(errors, [])
         self.assertIsNotNone(migrated)
         assert migrated is not None

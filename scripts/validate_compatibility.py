@@ -22,7 +22,6 @@ POLICY_PATH = ROOT / "compatibility.yaml"
 POLICY_SCHEMA_PATH = ROOT / "schema" / "compatibility.schema.json"
 PROTOCOL_PATH = ROOT / "protocol.yaml"
 CONFORMANCE_PATH = ROOT / "conformance.yaml"
-MANIFEST_PATH = ROOT / "manifest.yaml"
 SCHEMA_ROOT = ROOT / "schema"
 
 MIGRATION_FLOOR = "0.6.0"
@@ -94,23 +93,21 @@ def frozen_contract_errors(policy: dict[str, Any]) -> list[str]:
         schema = load_json_mapping(path)
         if schema.get("$id") != schema_id:
             errors.append(
-                f"{prefix}.schema_id: expected {schema_id!r}, "
-                f"file declares {schema.get('$id')!r}"
+                f"{prefix}.schema_id: expected {schema_id!r}, file declares {schema.get('$id')!r}"
             )
         actual_sha = git_blob_sha1(path)
         if actual_sha != descriptor["git_blob_sha1"]:
             errors.append(
-                f"{prefix}.git_blob_sha1: frozen content changed; "
-                f"expected {descriptor['git_blob_sha1']}, got {actual_sha}"
+                f"{prefix}.git_blob_sha1: frozen content changed; expected {descriptor['git_blob_sha1']}, got {actual_sha}"
             )
     return errors
 
 
 def binding_errors(policy: dict[str, Any]) -> list[str]:
+    """Validate universal release bindings without requiring a concrete root Mind."""
     errors: list[str] = []
     protocol = load_yaml_mapping(PROTOCOL_PATH)
     conformance = load_yaml_mapping(CONFORMANCE_PATH)
-    manifest = load_yaml_mapping(MANIFEST_PATH)
 
     protocol_ref = {
         "id": protocol["protocol"]["id"],
@@ -120,8 +117,6 @@ def binding_errors(policy: dict[str, Any]) -> list[str]:
         errors.append("compatibility policy must target protocol id/version exactly")
     if conformance.get("protocol") != protocol_ref:
         errors.append("conformance suite must target the same protocol id/version")
-    if manifest.get("protocol") != protocol_ref:
-        errors.append("canonical instance must target the same protocol id/version")
 
     compatibility_contract = protocol.get("contracts", {}).get("compatibility")
     if compatibility_contract != {
@@ -153,13 +148,8 @@ def binding_errors(policy: dict[str, Any]) -> list[str]:
     if suite_compatibility != expected_suite_compatibility:
         errors.append("conformance compatibility summary must match compatibility.yaml")
 
-    if manifest.get("schema_version") != policy["freeze"]["manifest_schema_version"]:
-        errors.append("canonical instance must use frozen manifest schema version")
-    mind = manifest.get("mind")
-    if isinstance(mind, dict) and "kind" in mind:
-        errors.append("canonical instance reintroduces removed mind.kind")
-    if "public_organizations" in manifest:
-        errors.append("canonical instance reintroduces removed public_organizations")
+    if (ROOT / "manifest.yaml").exists():
+        errors.append("protocol authority repository must not contain a canonical concrete manifest")
 
     return errors
 

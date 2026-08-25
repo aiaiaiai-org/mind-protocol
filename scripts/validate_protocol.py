@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # © 2026 aiaiaiai · aiaiaiai.org
 # SPDX-License-Identifier: MIT
-"""Validate the neutral protocol descriptor and its concrete mind instance binding."""
+"""Validate the implementation-independent Mind Protocol descriptor and linked contracts."""
 
 from __future__ import annotations
 
@@ -17,20 +17,15 @@ from validate_manifest import load_schema, load_yaml_mapping, schema_errors
 ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL_PATH = ROOT / "protocol.yaml"
 PROTOCOL_SCHEMA_PATH = ROOT / "schema/protocol.schema.json"
-MANIFEST_PATH = ROOT / "manifest.yaml"
-IDENTITY_MODULE_PATH = ROOT / "identity/module.yaml"
-IDENTITY_RESOURCE_PATH = ROOT / "identity/identity.yaml"
-IDENTITY_SCHEMA_PATH = ROOT / "schema/identity.schema.json"
-IDENTITY_RESOURCE_SCHEMA = "schema/identity-resource.schema.json"
-VISUAL_ASSETS_SCHEMA = "schema/visual-assets.schema.json"
 CONFORMANCE_SCHEMA = "schema/conformance.schema.json"
 COMPATIBILITY_SCHEMA = "schema/compatibility.schema.json"
+VISUAL_ASSETS_SCHEMA = "schema/visual-assets.schema.json"
 
 EXPECTED_CONTRACTS = {
     "manifest": "schema/mind.schema.json",
     "module": "schema/module.schema.json",
     "identity": "schema/identity.schema.json",
-    "identity_resource": IDENTITY_RESOURCE_SCHEMA,
+    "identity_resource": "schema/identity-resource.schema.json",
     "relationships": "schema/relationships.schema.json",
     "visual_assets": VISUAL_ASSETS_SCHEMA,
     "conformance": CONFORMANCE_SCHEMA,
@@ -39,15 +34,13 @@ EXPECTED_CONTRACTS = {
 
 
 def expected_compatibility_status(version: str) -> str:
-    """Return the protocol lifecycle state implied by a schema-v3 release version."""
     parsed = SemVer.parse(version)
     if parsed.major == 0:
         return "frozen_pre_1_0"
     if parsed.major == 1:
         return "release_candidate" if parsed.prerelease else "stable_1_x"
     raise ValueError(
-        "protocol descriptor schema v3 defines lifecycle semantics only for "
-        "pre-1.0 and 1.x releases"
+        "protocol descriptor schema v3 defines lifecycle semantics only for pre-1.0 and 1.x releases"
     )
 
 
@@ -73,9 +66,43 @@ def repository_file(relative_path: str) -> Path:
     return path
 
 
+def repository_boundary_errors() -> list[str]:
+    errors: list[str] = []
+    metadata = load_yaml_mapping(ROOT / "mind-repository.yaml")
+    roles = metadata.get("repository", {}).get("roles", {})
+    protocol_role = roles.get("protocol_authority", {})
+    concrete_role = roles.get("concrete_mind", {})
+
+    if metadata.get("scope") != "repository_metadata" or metadata.get("protocol_contract") is not False:
+        errors.append("mind-repository.yaml must remain repository metadata, not protocol contract")
+    if metadata.get("repository", {}).get("id") != "aiaiaiai-org/mind-protocol":
+        errors.append("repository metadata must identify aiaiaiai-org/mind-protocol")
+    if protocol_role.get("enabled") is not True or protocol_role.get("canonical") is not True:
+        errors.append("repository must declare canonical protocol authority enabled")
+    if protocol_role.get("release_authority") is not True:
+        errors.append("repository must declare protocol release authority")
+    if concrete_role.get("enabled") is not False:
+        errors.append("protocol repository must not enable a concrete Mind role")
+
+    forbidden_root_paths = (
+        "manifest.yaml",
+        "protocol.lock.yaml",
+        "identity",
+        "relationships",
+        "knowledge",
+        "engineering",
+        "systems",
+        "writing",
+        ".assistant",
+    )
+    for relative in forbidden_root_paths:
+        if (ROOT / relative).exists():
+            errors.append(f"protocol repository must not contain concrete root path: {relative}")
+    return errors
+
+
 def validate_protocol() -> list[str]:
     errors: list[str] = []
-
     protocol = load_yaml_mapping(PROTOCOL_PATH)
     protocol_schema = load_schema(PROTOCOL_SCHEMA_PATH)
     errors.extend(
@@ -84,23 +111,14 @@ def validate_protocol() -> list[str]:
     )
     if errors:
         return errors
-    errors.extend(compatibility_lifecycle_errors(protocol))
 
-    manifest = load_yaml_mapping(MANIFEST_PATH)
+    errors.extend(compatibility_lifecycle_errors(protocol))
+    errors.extend(repository_boundary_errors())
+
     protocol_ref = {
         "id": protocol["protocol"]["id"],
         "version": protocol["protocol"]["version"],
     }
-    if manifest.get("protocol") != protocol_ref:
-        errors.append("manifest protocol id/version must match protocol.yaml")
-
-    subject = manifest["mind"]["subject"]
-    expected_instance_name = f"mind@{subject['id']}"
-    if manifest["mind"]["name"] != expected_instance_name:
-        errors.append(
-            "$.mind.name: concrete canonical instance must be named "
-            f"{expected_instance_name!r}"
-        )
 
     contracts = protocol["contracts"]
     for contract_id, expected_schema in EXPECTED_CONTRACTS.items():
@@ -145,39 +163,10 @@ def validate_protocol() -> list[str]:
     else:
         errors.extend(
             f"compatibility{error[1:]}"
-            for error in schema_errors(
-                Draft202012Validator(compatibility_schema), compatibility
-            )
+            for error in schema_errors(Draft202012Validator(compatibility_schema), compatibility)
         )
         if compatibility.get("protocol") != protocol_ref:
             errors.append("compatibility policy must target protocol id/version exactly")
-
-    descriptor = load_yaml_mapping(IDENTITY_MODULE_PATH)
-    identity_resource = descriptor.get("module", {}).get("resources", {}).get("identity")
-    if not isinstance(identity_resource, dict):
-        errors.append("identity module must declare resources.identity")
-        return errors
-    if identity_resource.get("path") != "identity/identity.yaml":
-        errors.append("identity resource must resolve to identity/identity.yaml")
-    if identity_resource.get("schema") != IDENTITY_RESOURCE_SCHEMA:
-        errors.append(f"identity resource envelope must use {IDENTITY_RESOURCE_SCHEMA}")
-
-    resource = load_yaml_mapping(IDENTITY_RESOURCE_PATH)
-    if resource.get("validation", {}).get("schema") != IDENTITY_RESOURCE_SCHEMA:
-        errors.append(f"identity resource validation.schema must be {IDENTITY_RESOURCE_SCHEMA}")
-
-    identity = resource.get("identity")
-    if not isinstance(identity, dict):
-        errors.append("identity resource must carry an identity mapping")
-        return errors
-
-    identity_schema = load_schema(IDENTITY_SCHEMA_PATH)
-    errors.extend(
-        f"identity{error[1:]}"
-        for error in schema_errors(Draft202012Validator(identity_schema), identity)
-    )
-    if identity.get("type") != subject.get("type") or identity.get("id") != subject.get("id"):
-        errors.append("canonical identity type/id must match manifest mind.subject exactly")
 
     return errors
 
@@ -195,7 +184,7 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
 
-    print("protocol, conformance, compatibility, and mind instance binding are valid")
+    print("protocol descriptor, linked contracts, compatibility lifecycle, and repository boundary are valid")
     return 0
 
 

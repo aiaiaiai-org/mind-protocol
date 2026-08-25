@@ -31,14 +31,13 @@ PROTOCOL_PATH = ROOT / "protocol.yaml"
 CONFORMANCE_PATH = ROOT / "conformance.yaml"
 COMPATIBILITY_PATH = ROOT / "compatibility.yaml"
 SCHEMA_ROOT = ROOT / "schema"
-REFERENCE_MANIFEST = ROOT / "manifest.yaml"
 BASELINE_README = """# Mind Protocol neutral baseline
 
 This directory is a generated **abstract protocol artifact**. It is not a concrete Mind and must not be published unchanged as a person, organization, agent, project, or product Mind.
 
 Its manifest intentionally uses `subject: unspecified` and `owner: unspecified` and contains no concrete Identity module.
 
-To create a concrete Mind, start from the exact immutable protocol release that produced this baseline and use the documented concrete bootstrap path. Do not copy or rename content from the protocol repository's reference implementation.
+To create a concrete Mind, start from the exact immutable protocol release that produced this baseline and use the documented concrete bootstrap path. Do not copy authored content from another concrete Mind.
 
 <!-- © 2026 aiaiaiai · aiaiaiai.org -->
 """
@@ -171,9 +170,16 @@ def generated_manifest_errors(output: Path) -> list[str]:
     }
     if manifest.get("protocol") != expected_protocol:
         errors.append("baseline manifest protocol must match generated protocol descriptor")
-    subject = manifest.get("mind", {}).get("subject")
-    if subject != {"type": "unspecified", "id": "unspecified"}:
+    if manifest.get("mind", {}).get("subject") != {
+        "type": "unspecified",
+        "id": "unspecified",
+    }:
         errors.append("generated baseline must retain explicit unspecified abstract subject")
+    if manifest.get("mind", {}).get("owner") != {
+        "type": "unspecified",
+        "id": "unspecified",
+    }:
+        errors.append("generated baseline must retain explicit unspecified abstract owner")
     if "kind" in manifest.get("mind", {}):
         errors.append("generated baseline must not reintroduce removed mind.kind")
     if "public_organizations" in manifest:
@@ -181,32 +187,18 @@ def generated_manifest_errors(output: Path) -> list[str]:
     return errors
 
 
-def reference_instance_tokens() -> set[str]:
-    manifest = load_yaml_mapping(REFERENCE_MANIFEST)
-    tokens: set[str] = {"github.com/0x0sky/mind"}
-    mind = manifest.get("mind", {})
-    name = mind.get("name")
-    if isinstance(name, str):
-        tokens.add(name)
-    for key in ("subject", "owner"):
-        entity = mind.get(key)
-        if isinstance(entity, dict) and isinstance(entity.get("id"), str):
-            tokens.add(entity["id"])
-    return {token for token in tokens if len(token) >= 4}
-
-
 def leakage_errors(output: Path) -> list[str]:
-    tokens = reference_instance_tokens()
+    """Prove the generated baseline is abstract without depending on a named reference Mind."""
     errors: list[str] = []
-    for path in sorted(output.rglob("*")):
-        if not path.is_file() or path.suffix not in {".yaml", ".yml", ".json"}:
-            continue
-        text = path.read_text(encoding="utf-8")
-        for token in sorted(tokens):
-            if token in text:
-                errors.append(
-                    f"{path.relative_to(output).as_posix()}: leaked reference-instance token {token!r}"
-                )
+    manifest = load_yaml_mapping(output / "manifest.yaml")
+    if manifest.get("mind", {}).get("name") != "mind":
+        errors.append("generated baseline must use the abstract mind name")
+    if manifest.get("modules", {}).get("registered") != []:
+        errors.append("generated baseline must not register concrete modules")
+    if (output / "identity").exists():
+        errors.append("generated baseline must not contain a concrete Identity module")
+    if (output / "relationships").exists():
+        errors.append("generated baseline must not contain concrete relationships")
     return errors
 
 

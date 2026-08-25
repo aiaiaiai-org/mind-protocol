@@ -1,110 +1,102 @@
-# mind — Mind Protocol + mind@0x0sky
+# Mind Protocol
 
-> One repository, two deliberately separate authorities: the implementation-independent **Mind Protocol** and the concrete living **`mind@0x0sky`** reference implementation.
+> Canonical, implementation-independent contract for versioned Mind identity, context, conformance, compatibility, and deterministic bootstrap.
 
-> **Creating your own Mind? Do not fork `master` as a template.** `master` also contains `mind@0x0sky`. Bootstrap a new concrete Mind from an exact immutable protocol release instead: [`docs/protocol/BOOTSTRAP.md`](docs/protocol/BOOTSTRAP.md).
+This repository defines **what a Mind is**. It does not contain the authored Mind of any person, organization, agent, project, or product.
 
-## What this repository is
+## Repository boundary
 
-| Role | Canonical entry point | Authority | Not authority |
-| --- | --- | --- | --- |
-| **Mind Protocol** | [`protocol.yaml`](protocol.yaml) | universal contracts, schemas, conformance, compatibility, release semantics | any named person's or organization's content |
-| **`mind@0x0sky`** | [`manifest.yaml`](manifest.yaml) | authored context for subject `person:0x0sky` | a template for another Mind |
+| Repository | Role |
+| --- | --- |
+| `aiaiaiai-org/mind-protocol` | canonical Mind Protocol source and release authority |
+| `<identity>/mind` | one concrete Mind publication and protocol consumer |
 
-`mind@0x0sky` is a **reference implementation, never a template authority**. Co-location in one Git repository does not mean that concrete Minds inherit from it.
+A concrete Mind never becomes protocol authority merely by implementing or testing the protocol. A GitHub fork of this repository is valid for protocol development; it is **not** a template for a concrete Mind.
 
-The machine-readable repository boundary is [`mind-repository.yaml`](mind-repository.yaml). The full rationale is [`docs/REPOSITORY_MODEL.md`](docs/REPOSITORY_MODEL.md).
+Machine-readable repository routing lives in [`mind-repository.yaml`](mind-repository.yaml). The full authority model is documented in [`docs/REPOSITORY_MODEL.md`](docs/REPOSITORY_MODEL.md).
 
-## Choose the right path
-
-| You want to… | Start here | Rule |
-| --- | --- | --- |
-| understand or change Mind Protocol | `mind-repository.yaml` → `protocol.yaml` | a GitHub fork/feature branch is fine for protocol development |
-| work on `0x0sky`'s concrete Mind | `mind-repository.yaml` → `manifest.yaml` | follow only registered modules for this subject |
-| create a new person/org/agent/project/product Mind | exact release tag → `scripts/bootstrap_mind.py` | **never seed it from `mind@0x0sky` content** |
-| consume a protocol release | exact immutable tag/release artifact | never consume floating `master` as release authority |
-
-Canonical construction of a new Mind is:
+## Canonical construction path
 
 ```text
-exact Mind Protocol release
-          ↓
-   neutral baseline
-          ↓
+exact immutable Mind Protocol release
+                ↓
+         neutral baseline
+                ↓
 subject + publication-owner semantics + Identity
-          ↓
-     concrete mind@<id>
-          ↓
-only authored modules/resources for that subject
+                ↓
+          concrete mind@<id>
+                ↓
+ only authored modules/resources for that subject
 ```
 
-By default the publication owner is the subject itself; bootstrap accepts an explicit different owner only when both owner type and id are supplied.
+Use [`scripts/bootstrap_mind.py`](scripts/bootstrap_mind.py) from an exact published release checkout. Never consume floating `master` as a release contract and never create a concrete Mind by copying another concrete Mind's authored content.
 
 ## Machine entry points
 
 | Entry point | Authority |
 | --- | --- |
-| [`mind-repository.yaml`](mind-repository.yaml) | repository-role routing; explicitly **not** a protocol contract |
-| [`protocol.yaml`](protocol.yaml) | implementation-independent protocol descriptor |
-| [`conformance.yaml`](conformance.yaml) | fixtures, feature matrix, supported ranges, deterministic probes, consumer modes |
-| [`compatibility.yaml`](compatibility.yaml) | compatibility freeze, schema fingerprints, forward-compatibility and migration policy |
-| [`manifest.yaml`](manifest.yaml) | concrete `mind@0x0sky` context only |
+| [`mind-repository.yaml`](mind-repository.yaml) | repository-role routing; repository metadata, not protocol contract |
+| [`protocol.yaml`](protocol.yaml) | protocol descriptor and universal contract discovery |
+| [`conformance.yaml`](conformance.yaml) | synthetic fixtures, feature matrix, supported ranges, deterministic probes |
+| [`compatibility.yaml`](compatibility.yaml) | compatibility state, schema fingerprints, forward-compatibility and migration policy |
+| [`schema/`](schema/) | published JSON Schema contracts |
+| [`docs/protocol/BOOTSTRAP.md`](docs/protocol/BOOTSTRAP.md) | exact-release creation of a concrete Mind |
+| [`docs/protocol/RELEASE_POLICY.md`](docs/protocol/RELEASE_POLICY.md) | formal release gates and publication semantics |
 
-The current source contract is **Mind Protocol `1.0.0-rc.1`**. It remains unpublished until the separate prerelease action succeeds. Protocol descriptor schema is `3`; manifest schema is `3`; conformance schema is `2`; the concrete `mind@0x0sky` context remains independently versioned at `0.4.0`.
+There is intentionally **no root `manifest.yaml`** in this repository. Concrete manifests belong to concrete Mind repositories or synthetic test fixtures.
+
+## Current source
+
+The current source contract is **Mind Protocol `1.0.0-rc.1`**. It is still an unpublished release candidate until the separate prerelease workflow succeeds.
+
+Protocol descriptor schema is `3`; manifest schema is `3`; conformance schema is `2`. The reusable JSON Schema bytes frozen for `0.9.0` remain unchanged in the RC candidate.
 
 ## Identity
 
-[`schema/identity.schema.json`](schema/identity.schema.json) is the universal Identity value for `person`, `organization`, `agent`, `project`, and `product`. It is provider-, repository-, storage-, renderer-, and runtime-independent.
+[`schema/identity.schema.json`](schema/identity.schema.json) defines the universal Identity value for `person`, `organization`, `agent`, `project`, and `product`. Identity is provider-, repository-, storage-, renderer-, and runtime-independent.
 
 Concrete publication packaging uses [`schema/identity-resource.schema.json`](schema/identity-resource.schema.json). Canonical visual bytes resolve separately through [`schema/visual-assets.schema.json`](schema/visual-assets.schema.json).
 
-Agent model/prompt/memory/runtime state and synthetic portraits are not universal Identity. A canonical agent emblem/glyph remains valid through the shared visual contract.
+Provider accounts, runtime/model state, synthetic portraits, and repository slugs do not silently become canonical Identity.
 
-## Manifest v3
+## Manifest and capability model
 
-Mind Protocol `0.9.0` froze manifest schema v3 and removed two pre-1.0 compatibility fields from the core manifest. The RC carries that root shape forward unchanged:
+Manifest schema v3, frozen in `0.9.0`, removes compatibility-only root concepts that do not belong in the provider-agnostic contract. Unknown root fields are rejected; compatible extension is negotiated through optional modules and versioned resources.
 
-- `mind.kind` — redundant with canonical `mind.subject.type`;
-- `public_organizations` — provider-specific projection that does not belong in the provider-agnostic root contract.
+`module` is the capability unit:
 
-Canonical organization semantics live in typed relationship resources. Provider membership/login data belongs in provider integrations and must not define canonical entity identity.
-
-Unknown root-manifest fields are rejected. Forward compatibility is negotiated through optional modules and versioned optional resources, not by silently extending the root manifest.
-
-## Relationships
-
-Authored relationships remain canonical claims with explicit provenance and confirmation. Provider-discovered observations are derived evidence and never silently become authorship.
+```text
+unknown optional module, not requested → ignore
+unknown required/default-loaded module → reject
+unknown root manifest field            → reject
+```
 
 ## Conformance
 
-[`conformance.yaml`](conformance.yaml) and [`schema/conformance.schema.json`](schema/conformance.schema.json) cover all five subject types through two consumer modes:
+The public conformance suite covers synthetic `person`, `organization`, `agent`, `project`, and `product` subjects through two consumer modes:
 
-- `schema` — JSON Schema plus shared protocol validators;
-- `minimal` — an independent core-reader path without JSON Schema or the shared relationship/visual semantic validators.
+- `schema` — JSON Schema plus shared semantic validators;
+- `minimal` — independent core-reader behavior over the same deterministic probes.
 
-Each mode declares supported range `>=1.0.0-rc.1 <1.0.0` and must produce the same deterministic outcomes for provenance, canonical visual resolution/integrity, optional/required modules, and frozen root-manifest behavior.
-
-Range evaluation uses SemVer 2.0 prerelease precedence, so `1.0.0-rc.1 < 1.0.0`; build metadata does not alter precedence.
+For the RC candidate, the supported range is `>=1.0.0-rc.1 <1.0.0`. Range evaluation follows SemVer 2.0 prerelease precedence.
 
 ```bash
 python scripts/validate_conformance.py --mode all
 ```
 
-## Compatibility freeze
+## Compatibility
 
-[`compatibility.yaml`](compatibility.yaml) carries the machine-readable `0.9.0` freeze into the release candidate. It defines manifest schema v3, module-based capability negotiation, exact schema fingerprints, unknown-module behavior, root-field rejection, the initial `1.x` compatibility rule, migration floor `0.6.0`, deterministic v2 → v3 migration, and the prohibition on inferring canonical IDs from provider logins.
-
-For `1.0.0-rc.1`, supported stable migration sources are `0.6.0`, `0.7.0`, `0.8.0`, and formal `0.9.0`.
+[`compatibility.yaml`](compatibility.yaml) carries the `0.9.0` freeze into the release candidate: exact schema fingerprints, manifest-v3 behavior, module capability negotiation, migration floor `0.6.0`, and provider-login/canonical-id separation.
 
 ```bash
 python scripts/validate_compatibility.py
 ```
 
-## Neutral baseline and concrete bootstrap
+## Neutral baseline and bootstrap
 
-[`scripts/generate_baseline.py`](scripts/generate_baseline.py) produces the deterministic **abstract** protocol baseline. It has `subject: unspecified`, no concrete Identity, and is never itself a person's or organization's Mind.
+[`scripts/generate_baseline.py`](scripts/generate_baseline.py) produces the deterministic abstract protocol baseline. Its manifest has `subject: unspecified`, no concrete Identity module, and is not itself a concrete Mind.
 
-[`scripts/bootstrap_mind.py`](scripts/bootstrap_mind.py) is the canonical transition from an exact protocol release to a minimal concrete Mind. It requires explicit subject, display name, context version, and repository visibility. Publication owner defaults to the subject, with an explicit distinct-owner override. Bootstrap then creates only the Identity module plus exact protocol locks. It does not copy reference-instance modules.
+[`scripts/bootstrap_mind.py`](scripts/bootstrap_mind.py) turns an exact checked-out release into a minimal concrete Mind with explicit subject, display name, context version, repository visibility, Identity, and exact protocol lock. Publication owner defaults to the subject unless a complete distinct owner is explicitly supplied.
 
 ```bash
 python scripts/generate_baseline.py --check
@@ -114,37 +106,27 @@ See [`docs/protocol/BASELINE.md`](docs/protocol/BASELINE.md) and [`docs/protocol
 
 ## Version axes
 
-Protocol and concrete context are independent:
+Protocol version and concrete context version are independent:
 
-- `protocol.version` identifies the Mind Protocol release;
-- `mind.context_version` identifies durable authored content of one concrete Mind.
+- `protocol.version` identifies the Mind Protocol release and is tagged here;
+- `mind.context_version` identifies durable authored content in one concrete Mind and is versioned there.
 
-A protocol bump does not imply a context bump. A concrete context bump does not imply a protocol release. Protocol-version tags belong to the protocol repository and must not be reused as concrete-context tags in consumer repositories.
+A protocol bump does not imply a context bump. Concrete Mind repositories must not use protocol-version tags as if those tags described their own authored context.
 
-## Migration
+## Release continuity
 
-Supported stable migration sources begin at `0.6.0`. The v2 → v3 migrator removes `mind.kind` only after checking consistency with `mind.subject.type` and never guesses canonical IDs from provider logins.
+`0.9.0`, the first formal Mind Protocol GitHub Release, was historically published from `0x0sky/mind` before protocol authority was physically separated. That immutable publication remains historical evidence and is never rewritten.
 
-A conforming `0.9.0` publication needs no manifest-shape migration for `1.0.0-rc.1`; it updates the protocol binding and keeps its independent `mind.context_version` unless durable authored context also changes.
+The exact protocol-source ancestry through commit `48a81df7d8e9818d9c01f3e1fe5ac663af29a006` was preserved in this repository before the RC publication. Canonical protocol source/release authority is now `aiaiaiai-org/mind-protocol`; concrete `0x0sky/mind` is only a consumer.
 
-See [`docs/protocol/MIGRATION_1.0.md`](docs/protocol/MIGRATION_1.0.md).
+See [`docs/protocol/AUTHORITY_MIGRATION.md`](docs/protocol/AUTHORITY_MIGRATION.md).
 
-## Formal publication sequence
+## Publication sequence
 
-1. `0.9.0` — first formal GitHub Release, published;
-2. `1.0.0-rc.1` — next GitHub prerelease after this exact source tree is verified;
+1. `0.9.0` — first formal release; historical publication preserved;
+2. `1.0.0-rc.1` — next GitHub prerelease from this canonical repository;
 3. `1.0.0` — first compatibility-guaranteed stable release.
 
-A deliberately small compatibility-canary set synchronized after `0.9.0` and passed before this RC candidate. The full named identity, visual-family, provider-binding, agent, project/product, and broader ecosystem rollout begins only after stable `1.0.0`.
-
-See [`docs/protocol/RELEASE_POLICY.md`](docs/protocol/RELEASE_POLICY.md) and [`docs/protocol/ROADMAP.md`](docs/protocol/ROADMAP.md).
-
-## Consumer boundary
-
-Consumers such as [`mind-web`](https://github.com/aiaiaiai-org/mind-web) may prove interoperability but never define protocol truth.
-
-## Privacy boundary
-
-Never commit credentials, secrets, private health/relationship information, transient personal state, or provider-derived observations presented as authored canonical truth.
+Merging source does not publish a release. Tags and GitHub Releases remain separate explicit publication actions.
 
 <!-- © 2026 aiaiaiai · aiaiaiai.org -->

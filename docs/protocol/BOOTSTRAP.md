@@ -1,6 +1,6 @@
 # Bootstrapping a concrete Mind
 
-A concrete Mind is created from an **exact immutable Mind Protocol release**, not by copying the `mind@0x0sky` reference implementation from `master`.
+A concrete Mind is created from an **exact immutable Mind Protocol release** from `aiaiaiai-org/mind-protocol`, not by copying another concrete Mind or by forking protocol `master` as a template.
 
 ## Canonical path
 
@@ -14,22 +14,20 @@ subject + publication-owner semantics + Identity
 concrete mind@<subject.id>
 ```
 
-The bootstrap path is intentionally boring: it copies the released protocol contract set, creates a minimal valid concrete manifest, adds the required Identity module/resource, and records an exact protocol lock. It does not copy personal relationships, knowledge, engineering context, handles, provider accounts, visual assets, or any other content from `mind@0x0sky`.
+The bootstrap copies the released protocol contract set, creates a minimal valid concrete manifest, adds the required Identity module/resource, and records an exact protocol lock. It does not invent or copy relationships, organization hierarchy, provider identities, handles, biography, governance, engineering, knowledge, systems, writing, visual assets, or runtime configuration.
 
-## Do not use a GitHub fork as a Mind template
+## Protocol fork vs concrete Mind
 
-Forking `0x0sky/mind` is valid for protocol development. It is not the canonical construction path for a new concrete Mind because `master` also contains the living `mind@0x0sky` implementation.
+Forking `aiaiaiai-org/mind-protocol` is valid for protocol development. It is not the construction path for a concrete Mind because a development branch is mutable and is not an immutable release authority.
 
-Changing `0x0sky` IDs in copied files is not migration or bootstrap. It is accidental identity inheritance.
+A concrete Mind also must not be created by renaming IDs inside another concrete Mind. That would copy authored context and create accidental identity inheritance.
 
 ## Bootstrap from a release tag
 
 After a protocol version is formally published, check out that exact tag and run the bootstrap tool from that checkout.
 
-Example for an organization:
-
 ```bash
-git clone --branch v1.0.0 https://github.com/0x0sky/mind.git mind-protocol
+git clone --branch v1.0.0 https://github.com/aiaiaiai-org/mind-protocol.git mind-protocol
 cd mind-protocol
 
 python scripts/bootstrap_mind.py \
@@ -42,7 +40,7 @@ python scripts/bootstrap_mind.py \
   --repository-visibility public
 ```
 
-Example where publication owner differs from the subject:
+A distinct publication owner is explicit and atomic:
 
 ```bash
 python scripts/bootstrap_mind.py \
@@ -59,18 +57,17 @@ python scripts/bootstrap_mind.py \
 
 If `--owner-type` and `--owner-id` are omitted, owner defaults to the subject. Supplying only one is rejected.
 
-The `--source-tag` must exactly match the protocol version in the checked-out contract (`v{protocol.version}`). The CLI additionally proves all of the following before generating anything:
+The CLI proves before generating anything that:
 
-- the command is running inside the Mind Protocol Git checkout;
-- the supplied tag exists locally;
-- the checked-out `HEAD` resolves to exactly the same commit as that tag;
-- `protocol.yaml`, `conformance.yaml`, `compatibility.yaml`, and `schema/` have no tracked local modifications relative to that tagged checkout.
+- it is running inside the Mind Protocol Git checkout;
+- `--source-tag` exactly matches `v{protocol.version}`;
+- the supplied tag exists;
+- checked-out `HEAD` equals that tag commit exactly;
+- `protocol.yaml`, `conformance.yaml`, `compatibility.yaml`, and `schema/` have no tracked modifications.
 
-A floating branch such as `master`, a branch commit that merely declares the same version string, or a locally modified released contract is therefore rejected as a concrete bootstrap source.
+A floating branch such as `master`, a later branch commit that merely declares the same version string, or a locally modified released contract is rejected.
 
 ## Generated minimum
-
-The output contains the minimum concrete publication surface:
 
 ```text
 mind@<id>/
@@ -89,59 +86,31 @@ mind@<id>/
     └── exact released protocol schemas
 ```
 
-The generated repository metadata declares itself a **protocol consumer**, not protocol authority.
+The generated metadata declares protocol-authority role disabled and concrete-Mind role enabled. The generated `protocol.lock.yaml` records the exact source repository `aiaiaiai-org/mind-protocol`, immutable release tag, contract Git blob fingerprints, schema `$id` values, and floating-branch consumption prohibition.
 
-The generated `protocol.lock.yaml` records:
-
-- exact protocol id/version;
-- immutable release tag;
-- floating-branch consumption as forbidden;
-- Git blob fingerprints for the vendored protocol descriptor, conformance, compatibility, and schemas;
-- the rule that the reference implementation is not a template.
-
-## What bootstrap deliberately does not invent
-
-Bootstrap does not create:
-
-- relationships;
-- organization hierarchy;
-- provider/GitHub identities;
-- handles;
-- biography or descriptive facts beyond the supplied display name;
-- governance, engineering, portfolio, knowledge, systems, or writing modules;
-- logos or visual identity;
-- AI model/runtime configuration.
-
-Those are added only when genuinely authored for the new subject and only through the appropriate protocol module/resource contracts.
-
-A provider login must never be inferred as a canonical identity ID merely because a repository is hosted by that provider.
+Folder names are not themselves protocol authority. A concrete implementation may later organize registered modules differently while preserving the manifest/resource contracts.
 
 ## Context version
 
-`mind.context_version` is explicit bootstrap input because it belongs to the concrete authored publication, not to the protocol release.
-
-Protocol `1.0.0` can therefore be consumed by concrete contexts `0.1.0`, `2.4.3`, or another independently managed version. Protocol tags do not become concrete-context tags.
+`mind.context_version` is explicit input because it belongs to the concrete authored publication, not to the protocol release. Protocol tags never become concrete-context tags.
 
 ## RC usage
 
-A prerelease such as `v1.0.0-rc.1` may be used for compatibility canaries after that prerelease is formally published. It should not be treated as the stable `1.x` compatibility guarantee.
-
-The same bootstrap mechanism is used; the exact prerelease tag is supplied as `--source-tag`, and the checkout proof applies identically.
+A prerelease such as `v1.0.0-rc.1` may be used for compatibility canaries only after that prerelease is formally published. It does not carry the stable `1.x` compatibility guarantee.
 
 ## Verification
 
-The protocol repository regression suite verifies that bootstrap:
+The protocol regression suite verifies that bootstrap:
 
-- produces a valid manifest schema v3 concrete Mind;
-- requires the Identity module;
-- binds Identity type/id to the manifest subject;
+- produces a valid manifest schema-v3 concrete Mind;
+- requires Identity and binds Identity type/id to the subject;
 - preserves distinct subject/publication-owner semantics;
-- creates no `mind@0x0sky` content in the generated concrete publication;
-- rejects a `HEAD` that differs from the named release tag;
-- rejects tracked modifications to the released protocol contract set;
-- records exact release consumption rather than floating `master`;
-- leaves protocol schemas unchanged.
+- creates only the requested synthetic subject rather than copying a named implementation;
+- rejects a `HEAD` different from the named release tag;
+- rejects modified released protocol contracts;
+- records `aiaiaiai-org/mind-protocol` and the exact release tag;
+- leaves published protocol schemas unchanged.
 
-See [`../REPOSITORY_MODEL.md`](../REPOSITORY_MODEL.md) for the authority model and [`BASELINE.md`](BASELINE.md) for the abstract neutral baseline.
+See [`../REPOSITORY_MODEL.md`](../REPOSITORY_MODEL.md) and [`BASELINE.md`](BASELINE.md).
 
 <!-- © 2026 aiaiaiai · aiaiaiai.org -->
