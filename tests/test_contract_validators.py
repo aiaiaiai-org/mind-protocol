@@ -23,13 +23,19 @@ OWNER = dict(SUBJECT)
 
 
 def fixture_manifest() -> dict:
-    return concrete_manifest(
+    """Return a synthetic concrete manifest with no filesystem-backed modules."""
+    manifest = concrete_manifest(
         {"id": "mind", "version": "1.0.0-rc.1"},
         dict(SUBJECT),
         dict(OWNER),
         context_version="0.1.0",
         repository_visibility="public",
     )
+    manifest["modules"]["required"] = []
+    manifest["modules"]["registered"] = []
+    manifest["modules"]["catalog"] = {}
+    manifest["loading"]["default"] = []
+    return manifest
 
 
 def fixture_relationships() -> dict:
