@@ -31,7 +31,7 @@ RELEASE_COMMIT = "a" * 40
 def fixture_manifest() -> dict:
     """Return a synthetic value for validator rules that do not load module files."""
     manifest = concrete_manifest(
-        {"id": "mind", "version": "1.0.0-rc.1"},
+        {"id": "mind", "version": "1.0.0-rc.2"},
         dict(SUBJECT),
         dict(OWNER),
         context_version="0.1.0",
@@ -74,7 +74,7 @@ class ContractValidatorRegressionTests(unittest.TestCase):
             output = Path(directory) / "mind"
             bootstrap_mind(
                 output,
-                source_tag="v1.0.0-rc.1",
+                source_tag="v1.0.0-rc.2",
                 release_commit=RELEASE_COMMIT,
                 subject_type="person",
                 subject_id="fixture-person",
