@@ -25,6 +25,7 @@ from validate_relationships import validate_relationships  # noqa: E402
 
 SUBJECT = {"type": "person", "id": "fixture-person"}
 OWNER = dict(SUBJECT)
+RELEASE_COMMIT = "a" * 40
 
 
 def fixture_manifest() -> dict:
@@ -74,6 +75,7 @@ class ContractValidatorRegressionTests(unittest.TestCase):
             bootstrap_mind(
                 output,
                 source_tag="v1.0.0-rc.1",
+                release_commit=RELEASE_COMMIT,
                 subject_type="person",
                 subject_id="fixture-person",
                 display_name="Fixture Person",

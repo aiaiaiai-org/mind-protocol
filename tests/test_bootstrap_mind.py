@@ -32,6 +32,7 @@ from validate_manifest import (  # noqa: E402
 
 PROTOCOL = load_yaml_mapping(ROOT / "protocol.yaml")["protocol"]
 SOURCE_TAG = f"v{PROTOCOL['version']}"
+RELEASE_COMMIT = "a" * 40
 
 
 class BootstrapMindTests(unittest.TestCase):
@@ -39,6 +40,7 @@ class BootstrapMindTests(unittest.TestCase):
         output = root / "mind"
         arguments: dict[str, object] = {
             "source_tag": SOURCE_TAG,
+            "release_commit": RELEASE_COMMIT,
             "subject_type": "organization",
             "subject_id": "fixture-organization",
             "display_name": "Fixture Organization",
@@ -50,7 +52,12 @@ class BootstrapMindTests(unittest.TestCase):
         return output
 
     @staticmethod
-    def release_git_output(*, head: str = "a" * 40, tag: str = "a" * 40, dirty: str = ""):
+    def release_git_output(
+        *,
+        head: str = RELEASE_COMMIT,
+        tag: str = RELEASE_COMMIT,
+        dirty: str = "",
+    ):
         def output(*arguments: str) -> str:
             if arguments == ("rev-parse", "--show-toplevel"):
                 return str(ROOT)
@@ -64,12 +71,20 @@ class BootstrapMindTests(unittest.TestCase):
 
         return output
 
+    @staticmethod
+    def generated_files(root: Path) -> dict[str, bytes]:
+        return {
+            str(path.relative_to(root)): path.read_bytes()
+            for path in sorted(root.rglob("*"))
+            if path.is_file()
+        }
+
     def test_canonical_protocol_repository_is_new_authority(self) -> None:
         self.assertEqual(PROTOCOL_REPOSITORY, "aiaiaiai-org/mind-protocol")
 
-    def test_exact_release_checkout_is_accepted(self) -> None:
+    def test_exact_release_checkout_is_accepted_and_returns_commit(self) -> None:
         with patch("bootstrap_mind.git_output", side_effect=self.release_git_output()):
-            verify_release_checkout(SOURCE_TAG)
+            self.assertEqual(verify_release_checkout(SOURCE_TAG), RELEASE_COMMIT)
 
     def test_release_checkout_rejects_head_that_is_not_the_tag(self) -> None:
         with patch(
@@ -90,6 +105,11 @@ class BootstrapMindTests(unittest.TestCase):
     def test_release_checkout_rejects_floating_source_name(self) -> None:
         with self.assertRaisesRegex(ValueError, "source tag must exactly match"):
             verify_release_checkout("master")
+
+    def test_bootstrap_rejects_non_exact_release_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "40-character"):
+                self.bootstrap(Path(directory), release_commit="abc123")
 
     def test_bootstrap_produces_valid_concrete_manifest_and_identity(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -123,17 +143,74 @@ class BootstrapMindTests(unittest.TestCase):
             repository = load_yaml_mapping(output / "mind-repository.yaml")
             self.assertFalse(repository["repository"]["roles"]["protocol_authority"]["enabled"])
 
-    def test_protocol_lock_pins_new_authority_exact_release_and_contract_bytes(self) -> None:
+    def test_protocol_lock_matches_verified_release_provenance_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = self.bootstrap(Path(directory))
             lock = load_yaml_mapping(output / "protocol.lock.yaml")
-            self.assertEqual(lock["source"]["repository"], "aiaiaiai-org/mind-protocol")
-            self.assertEqual(lock["source"]["tag"], SOURCE_TAG)
-            self.assertEqual(lock["source"]["floating_branch"], "forbidden")
+            self.assertEqual(lock["authority_repository"], PROTOCOL_REPOSITORY)
+            self.assertEqual(
+                lock["release_source"],
+                {
+                    "repository": PROTOCOL_REPOSITORY,
+                    "tag": SOURCE_TAG,
+                    "commit": RELEASE_COMMIT,
+                    "floating_branch": "forbidden",
+                },
+            )
+            self.assertEqual(lock["protocol_descriptor"]["path"], "protocol.yaml")
+            self.assertRegex(
+                lock["protocol_descriptor"]["git_blob_sha1"],
+                r"^[0-9a-f]{40}$",
+            )
+            self.assertEqual(
+                set(lock["release_machine_artifacts"]),
+                {"conformance.yaml", "compatibility.yaml"},
+            )
+            self.assertNotIn("source", lock)
+            self.assertNotIn("reference_instance", lock)
             self.assertEqual(len(lock["vendored_contracts"]), 9)
             for descriptor in lock["vendored_contracts"].values():
                 self.assertRegex(descriptor["git_blob_sha1"], r"^[0-9a-f]{40}$")
-                self.assertTrue(descriptor["schema_id"].startswith("https://aiaiaiai.org/mind/schema/"))
+                self.assertTrue(
+                    descriptor["schema_id"].startswith(
+                        "https://aiaiaiai.org/mind/schema/"
+                    )
+                )
+
+    def test_repository_metadata_records_exact_release_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = self.bootstrap(Path(directory))
+            repository = load_yaml_mapping(output / "mind-repository.yaml")
+            self.assertEqual(
+                repository["protocol_consumption"],
+                {
+                    "id": PROTOCOL["id"],
+                    "version": PROTOCOL["version"],
+                    "authority_repository": PROTOCOL_REPOSITORY,
+                    "release_repository": PROTOCOL_REPOSITORY,
+                    "release_tag": SOURCE_TAG,
+                    "release_commit": RELEASE_COMMIT,
+                    "floating_master": "forbidden",
+                },
+            )
+            self.assertEqual(
+                repository["fork_policy"],
+                {
+                    "relationship_to_protocol_repository": "independent_consumer",
+                    "copy_reference_instance_content": "forbidden",
+                    "creation_mechanism": "exact_release_bootstrap",
+                },
+            )
+
+    def test_bootstrap_output_is_deterministic_for_same_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as left_directory:
+            with tempfile.TemporaryDirectory() as right_directory:
+                left = self.bootstrap(Path(left_directory))
+                right = self.bootstrap(Path(right_directory))
+                self.assertEqual(
+                    self.generated_files(left),
+                    self.generated_files(right),
+                )
 
     def test_distinct_publication_owner_is_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -147,7 +224,10 @@ class BootstrapMindTests(unittest.TestCase):
                 repository_visibility="private",
             )
             manifest = load_yaml_mapping(output / "manifest.yaml")
-            self.assertEqual(manifest["mind"]["owner"], {"type": "organization", "id": "fixture-publisher"})
+            self.assertEqual(
+                manifest["mind"]["owner"],
+                {"type": "organization", "id": "fixture-publisher"},
+            )
 
     def test_owner_arguments_are_atomic(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -163,6 +243,7 @@ class BootstrapMindTests(unittest.TestCase):
                 bootstrap_mind(
                     output,
                     source_tag=SOURCE_TAG,
+                    release_commit=RELEASE_COMMIT,
                     subject_type="person",
                     subject_id="fixture-person",
                     display_name="Fixture Person",
