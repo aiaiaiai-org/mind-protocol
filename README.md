@@ -47,9 +47,9 @@ There is intentionally **no root `manifest.yaml`** in this repository. Concrete 
 
 ## Current source
 
-The current source contract is **Mind Protocol `1.0.0-rc.1`**. It is still an unpublished release candidate until the separate prerelease workflow succeeds.
+The current source contract is **Mind Protocol `1.0.0-rc.2`**. Immutable prerelease `v1.0.0-rc.1` remains published historical evidence; `rc.2` is the corrected canonical-bootstrap integration candidate until its separate prerelease workflow succeeds.
 
-Protocol descriptor schema is `3`; manifest schema is `3`; conformance schema is `2`. The reusable JSON Schema bytes frozen for `0.9.0` remain unchanged in the RC candidate.
+Protocol descriptor schema is `3`; manifest schema is `3`; conformance schema is `2`. The reusable JSON Schema bytes frozen for `0.9.0` remain unchanged across the RC train.
 
 ## Identity
 
@@ -78,7 +78,7 @@ The public conformance suite covers synthetic `person`, `organization`, `agent`,
 - `schema` — JSON Schema plus shared semantic validators;
 - `minimal` — independent core-reader behavior over the same deterministic probes.
 
-For the RC candidate, the supported range is `>=1.0.0-rc.1 <1.0.0`. Range evaluation follows SemVer 2.0 prerelease precedence.
+For the current RC train, the supported range is `>=1.0.0-rc.1 <1.0.0`. `rc.2` stays inside that range because it corrects bootstrap/repository provenance without introducing a compatibility-breaking universal semantic change. Range evaluation follows SemVer 2.0 prerelease precedence.
 
 ```bash
 python scripts/validate_conformance.py --mode all
@@ -86,7 +86,7 @@ python scripts/validate_conformance.py --mode all
 
 ## Compatibility
 
-[`compatibility.yaml`](compatibility.yaml) carries the `0.9.0` freeze into the release candidate: exact schema fingerprints, manifest-v3 behavior, module capability negotiation, migration floor `0.6.0`, and provider-login/canonical-id separation.
+[`compatibility.yaml`](compatibility.yaml) carries the `0.9.0` freeze through the release candidates: exact schema fingerprints, manifest-v3 behavior, module capability negotiation, migration floor `0.6.0`, and provider-login/canonical-id separation.
 
 ```bash
 python scripts/validate_compatibility.py
@@ -97,6 +97,8 @@ python scripts/validate_compatibility.py
 [`scripts/generate_baseline.py`](scripts/generate_baseline.py) produces the deterministic abstract protocol baseline. Its manifest has `subject: unspecified`, no concrete Identity module, and is not itself a concrete Mind.
 
 [`scripts/bootstrap_mind.py`](scripts/bootstrap_mind.py) turns an exact checked-out release into a minimal concrete Mind with explicit subject, display name, context version, repository visibility, Identity, and exact protocol lock. Publication owner defaults to the subject unless a complete distinct owner is explicitly supplied.
+
+The bootstrap records exact release repository, tag, and commit provenance consistently in `mind-repository.yaml` and `protocol.lock.yaml`; floating `master` is forbidden.
 
 ```bash
 python scripts/generate_baseline.py --check
@@ -117,15 +119,18 @@ A protocol bump does not imply a context bump. Concrete Mind repositories must n
 
 `0.9.0`, the first formal Mind Protocol GitHub Release, was historically published from `0x0sky/mind` before protocol authority was physically separated. That immutable publication remains historical evidence and is never rewritten.
 
-The exact protocol-source ancestry through commit `48a81df7d8e9818d9c01f3e1fe5ac663af29a006` was preserved in this repository before the RC publication. Canonical protocol source/release authority is now `aiaiaiai-org/mind-protocol`; concrete `0x0sky/mind` is only a consumer.
+The exact protocol-source ancestry through commit `48a81df7d8e9818d9c01f3e1fe5ac663af29a006` was preserved in this repository before RC publication. Canonical protocol source/release authority is now `aiaiaiai-org/mind-protocol`; concrete `0x0sky/mind` is only a consumer.
+
+`v1.0.0-rc.1` is immutable. The bootstrap provenance correction merged after that prerelease is promoted through `rc.2` rather than mutating `rc.1`.
 
 See [`docs/protocol/AUTHORITY_MIGRATION.md`](docs/protocol/AUTHORITY_MIGRATION.md).
 
 ## Publication sequence
 
 1. `0.9.0` — first formal release; historical publication preserved;
-2. `1.0.0-rc.1` — next GitHub prerelease from this canonical repository;
-3. `1.0.0` — first compatibility-guaranteed stable release.
+2. `1.0.0-rc.1` — first immutable GitHub prerelease from the canonical protocol repository;
+3. `1.0.0-rc.2` — corrected canonical-bootstrap integration candidate;
+4. `1.0.0` — first compatibility-guaranteed stable release after final integration evidence.
 
 Merging source does not publish a release. Tags and GitHub Releases remain separate explicit publication actions.
 
