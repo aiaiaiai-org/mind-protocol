@@ -3,6 +3,25 @@
 name: Mind Contract CI
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - README.md
+      - AGENTS.md
+      - mind-repository.yaml
+      - protocol.yaml
+      - conformance.yaml
+      - compatibility.yaml
+      - schema/**
+      - scripts/**
+      - tests/**
+      - modules/**
+      - docs/REPOSITORY_MODEL.md
+      - docs/protocol/**
+      - .github/copilot-instructions.md
+      - .github/workflows/manifest-ci.yml
+      - .github/workflows/release.yml
   pull_request:
     paths:
       - README.md
@@ -11,28 +30,13 @@ on:
       - protocol.yaml
       - conformance.yaml
       - compatibility.yaml
-      - manifest.yaml
       - schema/**
+      - scripts/**
+      - tests/**
+      - modules/**
       - docs/REPOSITORY_MODEL.md
       - docs/protocol/**
-      - scripts/semver.py
-      - scripts/bootstrap_mind.py
-      - scripts/validate_manifest.py
-      - scripts/validate_protocol.py
-      - scripts/validate_relationships.py
-      - scripts/validate_schemas.py
-      - scripts/validate_visual_assets.py
-      - scripts/validate_identity_resources.py
-      - scripts/validate_agent_identity.py
-      - scripts/validate_conformance.py
-      - scripts/validate_compatibility.py
-      - scripts/generate_baseline.py
-      - scripts/build_release_bundle.py
-      - scripts/migrate_manifest_v2_to_v3.py
-      - tests/**
-      - "**/module.yaml"
-      - identity/identity.yaml
-      - relationships/relationships.yaml
+      - .github/copilot-instructions.md
       - .github/workflows/manifest-ci.yml
       - .github/workflows/release.yml
   workflow_dispatch:
@@ -42,7 +46,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate mind contract
+    name: Validate protocol contracts
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -59,20 +63,8 @@ jobs:
       - name: Validate every published JSON Schema
         run: python scripts/validate_schemas.py
 
-      - name: Validate manifest YAML syntax
-        run: python scripts/validate_manifest.py --syntax-only
-
-      - name: Validate manifest, modules, and resources
-        run: python scripts/validate_manifest.py
-
-      - name: Validate universal Identity resources
-        run: python scripts/validate_identity_resources.py
-
-      - name: Validate neutral protocol and instance binding
+      - name: Validate protocol descriptor and pure-authority repository boundary
         run: python scripts/validate_protocol.py
-
-      - name: Validate relationship semantics and migration
-        run: python scripts/validate_relationships.py
 
       - name: Validate canonical visual asset fixtures
         run: python scripts/validate_visual_assets.py
@@ -92,5 +84,5 @@ jobs:
       - name: Validate reproducible formal release bundle
         run: python scripts/build_release_bundle.py --check
 
-      - name: Run validator, bootstrap, migration, and release regression tests
+      - name: Run validator, bootstrap, migration, repository, and release regression tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
