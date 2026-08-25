@@ -1,6 +1,6 @@
 # Mind Protocol 1.0 release candidate
 
-Status: **`1.0.0-rc.1` source candidate; formal prerelease not yet published**
+Status: **`1.0.0-rc.2` source candidate; `v1.0.0-rc.1` is published and immutable**
 
 Mind Protocol is the implementation-independent contract in this repository. Concrete Minds live in separate repositories and consume exact releases.
 
@@ -35,7 +35,7 @@ A GitHub fork of this repository is valid for protocol development. A concrete M
 | --- | --- | --- |
 | Protocol descriptor schema | `3` | Descriptor shape and lifecycle/contract discovery. |
 | Manifest schema | `3` | Frozen concrete root shape from `0.9.0`. |
-| Protocol | `1.0.0-rc.1` | Final-contract release candidate. |
+| Protocol | `1.0.0-rc.2` | Corrected canonical-bootstrap integration candidate. |
 | Conformance suite schema | `2` | Dual consumer modes and deterministic probes. |
 | Compatibility policy schema | `1` | Schema fingerprints, forward compatibility, migration policy. |
 | Identity schema | `1` | Universal Identity for all five subject types. |
@@ -56,13 +56,15 @@ unknown root manifest field            → reject
 
 ## Compatibility and schema immutability
 
-[`../../compatibility.yaml`](../../compatibility.yaml) fingerprints each published JSON Schema by `$id` and exact Git blob SHA-1. The RC reuses the `0.9.0` schema identities only because those schema bytes are unchanged.
+[`../../compatibility.yaml`](../../compatibility.yaml) fingerprints each published JSON Schema by `$id` and exact Git blob SHA-1. The RC train reuses the `0.9.0` schema identities only because those schema bytes are unchanged.
 
 Supported stable migration sources are `0.6.0`, `0.7.0`, `0.8.0`, and formal `0.9.0`.
 
 ## Conformance
 
-The suite covers synthetic `person`, `organization`, `agent`, `project`, and `product` subjects through two independent reader modes. The RC support range is `>=1.0.0-rc.1 <1.0.0` and follows strict SemVer 2.0 prerelease precedence.
+The suite covers synthetic `person`, `organization`, `agent`, `project`, and `product` subjects through two independent reader modes. The current RC support range remains `>=1.0.0-rc.1 <1.0.0` and follows strict SemVer 2.0 prerelease precedence.
+
+`rc.2` is inside that range because the delta from `rc.1` is the exact standalone bootstrap/repository-provenance contract, not a compatibility-breaking universal semantic change.
 
 ```bash
 python scripts/validate_conformance.py --mode all
@@ -74,9 +76,11 @@ python scripts/validate_conformance.py --mode all
 
 [`../../scripts/bootstrap_mind.py`](../../scripts/bootstrap_mind.py) turns an exact checked-out release into a minimal concrete publication. It creates only the required Identity module/resource plus exact protocol locks and never copies authored modules from another concrete Mind.
 
+The corrected bootstrap requires the exact release tag commit and records release repository, tag, and commit in both `mind-repository.yaml` and `protocol.lock.yaml`.
+
 ## Release boundary
 
-`0.9.0` remains the first formal GitHub Release and historical publication. Protocol authority was physically separated before RC publication while preserving exact source ancestry. The next publication is `1.0.0-rc.1` from this repository after a green post-split PR/tree proof. Stable `1.0.0` begins the compatibility-guaranteed `1.x` line.
+`0.9.0` remains the first formal GitHub Release and historical publication. `v1.0.0-rc.1` is the first immutable prerelease from the separated canonical protocol repository. The next publication is `v1.0.0-rc.2`, proving the corrected standalone bootstrap path before stable `1.0.0` begins the compatibility-guaranteed `1.x` line.
 
 Merging source is not publishing a release.
 

@@ -5,8 +5,9 @@ Mind Protocol source merge and formal release publication are separate operation
 ## Release sequence
 
 1. `0.9.0` — first formal GitHub Release, historically published before the physical repository split;
-2. `1.0.0-rc.1` — GitHub prerelease proving the final contract candidate;
-3. `1.0.0` — first compatibility-guaranteed stable release.
+2. `1.0.0-rc.1` — first immutable GitHub prerelease from the separated canonical protocol repository;
+3. `1.0.0-rc.2` — corrected canonical-bootstrap integration candidate;
+4. `1.0.0` — first compatibility-guaranteed stable release after final integration evidence.
 
 Earlier `0.6.0`, `0.7.0`, and `0.8.0` remain source milestones and are not retroactively published.
 
@@ -41,7 +42,7 @@ The workflow derives target SHA, protocol version, tag, title, release notes, an
 
 ## Schema identity
 
-Published JSON Schema `$id` values identify schema shapes, not one GitHub release number. If a schema is reused across `0.9.0`, the RC, and stable `1.0.0`, its bytes remain unchanged. Any real shape change requires a new versioned schema identity.
+Published JSON Schema `$id` values identify schema shapes, not one GitHub release number. If a schema is reused across `0.9.0`, the RC train, and stable `1.0.0`, its bytes remain unchanged. Any real shape change requires a new versioned schema identity.
 
 Exact protocol-release binding remains semantic and machine-checked:
 
@@ -63,22 +64,32 @@ After `v0.9.0`, a deliberately small set of real concrete Minds synchronized as 
 
 ## `1.0.0-rc.1`
 
-The RC is a prerelease, not a stable compatibility promise. Publication requires:
+`v1.0.0-rc.1` is published and immutable. It proved the frozen protocol contract, SemVer prerelease behavior, schema immutability, required synthetic fixtures, dual-mode conformance, neutral baseline, and four real concrete consumers.
 
-- a post-split green PR in `aiaiaiai-org/mind-protocol`;
+A post-publication defect was then found in canonical concrete-Mind bootstrap/repository provenance: generated metadata did not carry the exact release repository/tag/commit in the same canonical shape already proven by the real consumers. `rc.1` is never mutated to absorb that correction.
+
+## `1.0.0-rc.2`
+
+`rc.2` promotes the corrected bootstrap/provenance path without introducing new universal protocol semantics. Publication requires:
+
+- a green post-`rc.1` PR in `aiaiaiai-org/mind-protocol`;
 - verified merge-tree equality;
-- tag `v1.0.0-rc.1` created from that exact merge commit;
-- clean protocol validation, conformance, compatibility, baseline generation, deterministic release bundle, and regression tests;
-- all required synthetic fixture types green;
+- tag `v1.0.0-rc.2` created from that exact merge commit;
+- clean protocol validation, conformance, compatibility, baseline generation, deterministic release bundle, bootstrap/regression tests;
+- unchanged frozen JSON Schema bytes and `$id` values;
+- exact bootstrap release repository, tag, and commit provenance;
 - no named-identity dependency;
-- no required provider dependency;
-- unchanged frozen schema bytes unless a deliberately versioned schema revision is reviewed.
+- no required provider dependency.
 
-A blocking semantic defect after publication requires `rc.2` or later; `rc.1` is never mutated.
+The RC conformance range remains `>=1.0.0-rc.1 <1.0.0` because the bootstrap correction is compatible with the frozen universal contract.
+
+After publication, the real canary Minds and independent `mind-web` consumer must exercise the exact `rc.2` release before stable promotion.
 
 ## `1.0.0`
 
-Stable `1.0.0` is the first compatibility-guaranteed `1.x` release and should promote the accepted final RC contract. Any semantic change after the final RC requires renewed review and conformance evidence.
+Stable `1.0.0` is the first compatibility-guaranteed `1.x` release and should promote the accepted final RC contract. Any universal semantic change after the final RC requires renewed review, conformance evidence, and—when blocking—another RC rather than silent stable-only drift.
+
+Stable publication requires final evidence from the corrected standalone create/load/auth/repair path and no unresolved universal protocol blocker.
 
 ## Delivery boundary
 
