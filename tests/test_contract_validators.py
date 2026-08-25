@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import copy
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -13,8 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from bootstrap_mind import concrete_manifest  # noqa: E402
-from validate_manifest import legacy_field_errors, validate_manifest_semantics  # noqa: E402
+from bootstrap_mind import bootstrap_mind, concrete_manifest  # noqa: E402
+from validate_manifest import (  # noqa: E402
+    legacy_field_errors,
+    load_yaml_mapping,
+    validate_manifest_semantics,
+)
 from validate_relationships import validate_relationships  # noqa: E402
 
 
@@ -23,7 +28,7 @@ OWNER = dict(SUBJECT)
 
 
 def fixture_manifest() -> dict:
-    """Return a synthetic concrete manifest with no filesystem-backed modules."""
+    """Return a synthetic value for validator rules that do not load module files."""
     manifest = concrete_manifest(
         {"id": "mind", "version": "1.0.0-rc.1"},
         dict(SUBJECT),
@@ -64,7 +69,19 @@ def fixture_relationships() -> dict:
 
 class ContractValidatorRegressionTests(unittest.TestCase):
     def test_synthetic_concrete_manifest_semantics_are_valid(self) -> None:
-        self.assertEqual(validate_manifest_semantics(fixture_manifest(), ROOT), [])
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "mind"
+            bootstrap_mind(
+                output,
+                source_tag="v1.0.0-rc.1",
+                subject_type="person",
+                subject_id="fixture-person",
+                display_name="Fixture Person",
+                context_version="0.1.0",
+                repository_visibility="public",
+            )
+            manifest = load_yaml_mapping(output / "manifest.yaml")
+            self.assertEqual(validate_manifest_semantics(manifest, output), [])
 
     def test_removed_mind_kind_has_deterministic_diagnostic(self) -> None:
         candidate = fixture_manifest()
