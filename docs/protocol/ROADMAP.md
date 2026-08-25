@@ -10,7 +10,7 @@ Formal publication policy is defined in [`RELEASE_POLICY.md`](RELEASE_POLICY.md)
 
 Mind keeps independent version axes for protocol semantics, descriptor/manifest shapes, concrete context, and typed resource schemas. A protocol release never implies a concrete context release, and a concrete context change never implies a protocol release.
 
-Published schema identities are versioned independently from protocol releases. When one schema shape intentionally survives across the `0.9.0` → `1.0.0-rc.1` → `1.0.0` train, release-specific version/lifecycle bindings belong in semantic validation rather than forcing byte changes under the same `$id`.
+Published schema identities are versioned independently from protocol releases. When one schema shape intentionally survives across the `0.9.0` → `1.0.0-rc.1` → `1.0.0-rc.2` → `1.0.0` train, release-specific version/lifecycle bindings belong in semantic validation rather than forcing byte changes under the same `$id`.
 
 ## 0.4 — readable protocol foundation
 
@@ -113,11 +113,11 @@ This phase was compatibility evidence only. It exercised manifest/resource migra
 
 Full named identity, visual-family, provider-binding, agent, project/product, and ecosystem synchronization remains deferred until stable `1.0.0`.
 
-## `1.0.0-rc.1` — final protocol release candidate
+## `1.0.0-rc.1` — first final-contract candidate
 
-Current source milestone: **`1.0.0-rc.1` candidate**. Formal publication remains a separate GitHub prerelease action after green PR/tree verification.
+Status: **published immutable GitHub prerelease**.
 
-The candidate proves the frozen contract exactly as intended to ship:
+`rc.1` proved the frozen contract through:
 
 - strict SemVer 2.0 prerelease precedence for supported-range evaluation;
 - clean-checkout full conformance;
@@ -130,19 +130,37 @@ The candidate proves the frozen contract exactly as intended to ship:
 - no required provider dependency;
 - no semantic drift from the frozen `0.9` surface except deliberately reviewed finalization required for `1.0`.
 
-The candidate range is `[1.0.0-rc.1, 1.0.0)`. Stable `1.0.0` is therefore not accidentally accepted as an RC-range member.
+The RC range is `[1.0.0-rc.1, 1.0.0)`. Stable `1.0.0` is therefore not accidentally accepted as an RC-range member.
 
-If a blocking semantic defect is found after `rc.1`, publish another RC instead of mutating the existing tag or silently changing the candidate.
+After publication, all four real canary Minds validated against the exact immutable `rc.1` release. A repository/bootstrap tooling defect was then identified: canonical bootstrap output did not record exact release repository/tag/commit provenance in the same shape already proven by the real consumers. The published `rc.1` tag and release remain untouched.
+
+## `1.0.0-rc.2` — corrected canonical-bootstrap integration candidate
+
+Current source milestone: **`1.0.0-rc.2` candidate**. Formal publication remains a separate GitHub prerelease action after green PR/tree verification.
+
+`rc.2` deliberately changes no frozen universal protocol semantics and no published JSON Schema bytes. It promotes the corrected standalone concrete-Mind creation path:
+
+- exact protocol authority remains `aiaiaiai-org/mind-protocol`;
+- bootstrap requires the checked-out `HEAD` to equal the requested immutable release tag commit;
+- generated `mind-repository.yaml` records exact release repository, tag, and commit;
+- generated `protocol.lock.yaml` records the same exact release provenance;
+- floating `master` consumption is forbidden;
+- generated output is deterministic for identical inputs;
+- new concrete Minds are standalone consumers rather than forks/copies of another concrete Mind.
+
+The conformance support range remains `[1.0.0-rc.1, 1.0.0)` because this correction is compatible with the already-frozen universal contract.
+
+Before stable promotion, the exact published `rc.2` release must be exercised by the four real Minds and by the independent `mind-web` create/load/auth/repair path. A blocking universal defect requires another RC rather than stable-only semantic drift.
 
 ## `1.0.0` — stable Mind Protocol
 
 Publication: **first compatibility-guaranteed stable GitHub Release**.
 
-The first compatibility-guaranteed protocol must provide implementation-independent Identity, explicit subject/owner, typed versioned resources, authored-vs-derived provenance, deterministic relationship and visual semantics, privacy/visibility boundaries, deterministic loading, optional-capability forward compatibility, provider-agnostic core, machine-readable supported range, reproducible neutral baseline, and a public conformance suite.
+The first compatibility-guaranteed protocol must provide implementation-independent Identity, explicit subject/owner, typed versioned resources, authored-vs-derived provenance, deterministic relationship and visual semantics, privacy/visibility boundaries, deterministic loading, optional-capability forward compatibility, provider-agnostic core, machine-readable supported range, reproducible neutral baseline, a public conformance suite, and one canonical deterministic standalone bootstrap path.
 
 Required synthetic fixture coverage remains person, organization, agent, project, and product.
 
-`1.0.0` should be a stable promotion of the accepted final RC contract. Semantic change after the final RC requires renewed review and conformance evidence.
+`1.0.0` should be a stable promotion of the accepted final RC contract. Semantic change after the final RC requires renewed review and conformance evidence. Stable publication waits for corrected `rc.2` consumer synchronization and the independent `mind-web` integration path to be proven.
 
 ## After `1.0.0` — full concrete identity rollout
 
@@ -163,3 +181,5 @@ Identity rollout **consumes** Mind Protocol `1.0`; named identities and their ro
 ## Non-goals for 1.0
 
 The core protocol does not require a full corporate brand system, typography/marketing voice, rich portraits, animation/3D semantics, AI runtime configuration, private conversation archives, provider-specific enrichment, deployment topology, migration of every named identity, or forcing every project/product into a sovereign mind.
+
+<!-- © 2026 aiaiaiai · aiaiaiai.org -->
