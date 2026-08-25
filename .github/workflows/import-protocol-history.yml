@@ -13,7 +13,7 @@ jobs:
     name: Import verified source history
     runs-on: ubuntu-latest
     steps:
-      - name: Import exact source master without rewriting commits
+      - name: Import exact historical protocol commit without rewriting commits
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_REPOSITORY: 0x0sky/mind
@@ -34,12 +34,17 @@ jobs:
           git clone --bare "$SOURCE_URL" /tmp/mind-source.git
           cd /tmp/mind-source.git
 
-          SOURCE_SHA="$(git rev-parse refs/heads/master)"
-          if [[ "$SOURCE_SHA" != "$EXPECTED_SOURCE_SHA" ]]; then
-            echo "Source master moved: expected ${EXPECTED_SOURCE_SHA}, got ${SOURCE_SHA}." >&2
+          if ! git cat-file -e "${EXPECTED_SOURCE_SHA}^{commit}"; then
+            echo "Pinned protocol source commit ${EXPECTED_SOURCE_SHA} is not present in ${SOURCE_REPOSITORY}." >&2
             exit 1
           fi
 
+          if ! git merge-base --is-ancestor "$EXPECTED_SOURCE_SHA" refs/heads/master; then
+            echo "Pinned protocol source commit ${EXPECTED_SOURCE_SHA} is no longer in source master ancestry." >&2
+            exit 1
+          fi
+
+          SOURCE_SHA="$EXPECTED_SOURCE_SHA"
           DESTINATION_SHA="$(git ls-remote "$DESTINATION_URL" refs/heads/master | awk '{print $1}')"
           if [[ "$DESTINATION_SHA" != "$EXPECTED_DESTINATION_SHA" ]]; then
             echo "Destination master moved after dispatch: expected ${EXPECTED_DESTINATION_SHA}, got ${DESTINATION_SHA}." >&2
@@ -57,6 +62,7 @@ jobs:
             exit 1
           fi
 
-          echo "Imported ${SOURCE_REPOSITORY}@master exactly at ${IMPORTED_SHA}."
+          echo "Imported historical ${SOURCE_REPOSITORY}@${EXPECTED_SOURCE_SHA} exactly at ${IMPORTED_SHA}."
+          echo "Current ${SOURCE_REPOSITORY}@master may advance independently after the authority split."
           echo "The temporary bootstrap history remains reachable from feature/protocol-history-import-bootstrap."
           echo "Historical release tags/releases are intentionally not copied by this import step."
