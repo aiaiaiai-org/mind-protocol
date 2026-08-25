@@ -4,9 +4,6 @@ name: Import Mind Protocol history
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -16,25 +13,50 @@ jobs:
     name: Import verified source history
     runs-on: ubuntu-latest
     steps:
-      - name: Import legacy protocol source master without rewriting commits
+      - name: Import exact source master without rewriting commits
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_REPOSITORY: 0x0sky/mind
           DESTINATION_REPOSITORY: ${{ github.repository }}
+          EXPECTED_SOURCE_SHA: 48a81df7d8e9818d9c01f3e1fe5ac663af29a006
+          EXPECTED_DESTINATION_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          git clone --bare "https://github.com/${SOURCE_REPOSITORY}.git" /tmp/mind-source.git
+
+          if [[ "$GITHUB_REF" != "refs/heads/master" ]]; then
+            echo "Import must be dispatched from master; got ${GITHUB_REF}." >&2
+            exit 1
+          fi
+
+          SOURCE_URL="https://github.com/${SOURCE_REPOSITORY}.git"
+          DESTINATION_URL="https://x-access-token:${GH_TOKEN}@github.com/${DESTINATION_REPOSITORY}.git"
+
+          git clone --bare "$SOURCE_URL" /tmp/mind-source.git
           cd /tmp/mind-source.git
 
           SOURCE_SHA="$(git rev-parse refs/heads/master)"
+          if [[ "$SOURCE_SHA" != "$EXPECTED_SOURCE_SHA" ]]; then
+            echo "Source master moved: expected ${EXPECTED_SOURCE_SHA}, got ${SOURCE_SHA}." >&2
+            exit 1
+          fi
+
+          DESTINATION_SHA="$(git ls-remote "$DESTINATION_URL" refs/heads/master | awk '{print $1}')"
+          if [[ "$DESTINATION_SHA" != "$EXPECTED_DESTINATION_SHA" ]]; then
+            echo "Destination master moved after dispatch: expected ${EXPECTED_DESTINATION_SHA}, got ${DESTINATION_SHA}." >&2
+            exit 1
+          fi
+
           git push \
-            "https://x-access-token:${GH_TOKEN}@github.com/${DESTINATION_REPOSITORY}.git" \
+            --force-with-lease="refs/heads/master:${EXPECTED_DESTINATION_SHA}" \
+            "$DESTINATION_URL" \
             "${SOURCE_SHA}:refs/heads/master"
 
-          git ls-remote \
-            "https://github.com/${DESTINATION_REPOSITORY}.git" \
-            refs/heads/master \
-            | grep -F "${SOURCE_SHA}"
+          IMPORTED_SHA="$(git ls-remote "$DESTINATION_URL" refs/heads/master | awk '{print $1}')"
+          if [[ "$IMPORTED_SHA" != "$EXPECTED_SOURCE_SHA" ]]; then
+            echo "Import verification failed: expected ${EXPECTED_SOURCE_SHA}, got ${IMPORTED_SHA}." >&2
+            exit 1
+          fi
 
-          echo "Imported source master exactly at ${SOURCE_SHA}."
-          echo "Historical release tags are intentionally not copied by this bootstrap workflow."
+          echo "Imported ${SOURCE_REPOSITORY}@master exactly at ${IMPORTED_SHA}."
+          echo "The temporary bootstrap history remains reachable from feature/protocol-history-import-bootstrap."
+          echo "Historical release tags/releases are intentionally not copied by this import step."
