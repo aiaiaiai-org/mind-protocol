@@ -63,6 +63,7 @@ The CLI proves before generating anything that:
 - `--source-tag` exactly matches `v{protocol.version}`;
 - the supplied tag exists;
 - checked-out `HEAD` equals that tag commit exactly;
+- the exact release commit is a full lowercase 40-character Git SHA;
 - `protocol.yaml`, `conformance.yaml`, `compatibility.yaml`, and `schema/` have no tracked modifications.
 
 A floating branch such as `master`, a later branch commit that merely declares the same version string, or a locally modified released contract is rejected.
@@ -86,7 +87,11 @@ mind@<id>/
     └── exact released protocol schemas
 ```
 
-The generated metadata declares protocol-authority role disabled and concrete-Mind role enabled. The generated `protocol.lock.yaml` records the exact source repository `aiaiaiai-org/mind-protocol`, immutable release tag, contract Git blob fingerprints, schema `$id` values, and floating-branch consumption prohibition.
+The generated metadata declares protocol-authority role disabled and concrete-Mind role enabled.
+
+`mind-repository.yaml` records the protocol authority plus the exact immutable release repository, tag, and commit. `protocol.lock.yaml` records the same authority and release provenance together with the protocol descriptor fingerprint, release machine-artifact fingerprints, schema `$id` values, and schema Git blob fingerprints. Both explicitly forbid floating-branch consumption.
+
+This provenance shape is the canonical creation contract for new concrete Minds. Existing real Minds may contain additional repository-local metadata, routing, modules, and authored context; those additions do not redefine the protocol bootstrap contract.
 
 Folder names are not themselves protocol authority. A concrete implementation may later organize registered modules differently while preserving the manifest/resource contracts.
 
@@ -108,7 +113,8 @@ The protocol regression suite verifies that bootstrap:
 - creates only the requested synthetic subject rather than copying a named implementation;
 - rejects a `HEAD` different from the named release tag;
 - rejects modified released protocol contracts;
-- records `aiaiaiai-org/mind-protocol` and the exact release tag;
+- records `aiaiaiai-org/mind-protocol`, the exact release tag, and the exact release commit in both repository metadata and protocol lock;
+- produces byte-for-byte deterministic output for identical inputs;
 - leaves published protocol schemas unchanged.
 
 See [`../REPOSITORY_MODEL.md`](../REPOSITORY_MODEL.md) and [`BASELINE.md`](BASELINE.md).
