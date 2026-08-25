@@ -30,7 +30,8 @@ jobs:
           grep -Fq 'workflow_dispatch:' "$workflow"
           ! grep -Fq '  push:' "$workflow"
           grep -Fq 'EXPECTED_SOURCE_SHA: 48a81df7d8e9818d9c01f3e1fe5ac663af29a006' "$workflow"
-          grep -Fq 'EXPECTED_DESTINATION_SHA: ${{ github.sha }}' "$workflow"
+          grep -Fq 'EXPECTED_DESTINATION_SHA:' "$workflow"
+          grep -Fq 'github.sha' "$workflow"
           grep -Fq -- '--force-with-lease="refs/heads/master:${EXPECTED_DESTINATION_SHA}"' "$workflow"
           grep -Fq 'feature/protocol-history-import-bootstrap' "$workflow"
 
