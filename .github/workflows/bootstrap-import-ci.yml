@@ -32,12 +32,15 @@ jobs:
           grep -Fq 'EXPECTED_SOURCE_SHA: 48a81df7d8e9818d9c01f3e1fe5ac663af29a006' "$workflow"
           grep -Fq 'EXPECTED_DESTINATION_SHA:' "$workflow"
           grep -Fq 'github.sha' "$workflow"
+          grep -Fq 'git cat-file -e "${EXPECTED_SOURCE_SHA}^{commit}"' "$workflow"
+          grep -Fq 'git merge-base --is-ancestor "$EXPECTED_SOURCE_SHA" refs/heads/master' "$workflow"
           grep -Fq -- '--force-with-lease="refs/heads/master:${EXPECTED_DESTINATION_SHA}"' "$workflow"
           grep -Fq 'feature/protocol-history-import-bootstrap' "$workflow"
 
-      - name: Verify pinned source master has not moved
+      - name: Verify pinned protocol commit remains in source ancestry
         run: |
           set -euo pipefail
           expected=48a81df7d8e9818d9c01f3e1fe5ac663af29a006
-          actual="$(git ls-remote https://github.com/0x0sky/mind.git refs/heads/master | awk '{print $1}')"
-          test "$actual" = "$expected"
+          git clone --bare https://github.com/0x0sky/mind.git /tmp/source.git
+          git -C /tmp/source.git cat-file -e "${expected}^{commit}"
+          git -C /tmp/source.git merge-base --is-ancestor "$expected" refs/heads/master
