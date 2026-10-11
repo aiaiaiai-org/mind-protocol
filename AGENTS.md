@@ -174,6 +174,42 @@ that cannot yet have changed.
 Never report repository state, successful writes, merges, CI results, or
 deployment results without evidence from the corresponding operation.
 
+### Shared-account co-authorship
+
+The connected GitHub identity is the commit author; a model name, tool, session,
+PR author, or reviewer is not automatically a co-author. Recognize distinct
+GitHub accounts `0x0sky` (ChatGPT/Codex) and `x0skai` (Claude Code) as
+potential collaborators, not interchangeable author identities.
+
+- Credit the other account only when it actually contributed authored code,
+  documentation, tests, or a concrete patch incorporated into this commit.
+  A review, approval, prompt, or GitHub login alone does not qualify. Do not
+  add a co-author for the sake of an achievement.
+- For a commit authored by `0x0sky` with actual contribution by `x0skai`,
+  include `Co-authored-by: x0skai <300452669+x0skai@users.noreply.github.com>`.
+- For a commit authored by `x0skai` with actual contribution by `0x0sky`,
+  include `Co-authored-by: 0x0sky <0x0sky@proton.me>`.
+- These are known GitHub-attributed commit addresses, not an invitation to
+  assume other addresses. Verify the exact email-to-account association if
+  it changes; use that account's confirmed GitHub noreply address when private.
+- Put trailers in the *commit message*, each on its own line, after a blank
+  line at the end of the message. Attribute only actual co-authors; never
+  add the commit author as their own co-author or duplicate a trailer.
+- Preserve legitimate tool/model attribution if present, but a line such as
+  `Co-Authored-By: Claude Opus <noreply@anthropic.com>` does not identify
+  `x0skai` or `0x0sky`. Do not replace a real account with a model label.
+- Before merge, inspect the pushed PR commit messages on GitHub, not only
+  local configuration or the PR description. Confirm the intended co-author
+  trailer survived. A comment, review, approval or PR body is not a substitute.
+- For **merge commits**, co-authored commits in the PR must carry their own
+  trailers; the final merge commit need not repeat them. For **squash merges**,
+  verify the proposed *final squash commit message* includes the applicable
+  trailer before merging. Use only merge methods the repository permits.
+- Do not manufacture commits, retroactively rewrite merged history, invent
+  contributions, or block a valid solo-authored PR merely to earn a badge.
+  Report verified commit attribution separately from GitHub Achievement
+  eligibility or award status, which may update asynchronously.
+
 ### Reporting
 
 Report outcomes, not tool choreography.
