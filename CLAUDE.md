@@ -86,12 +86,17 @@ potential collaborators, not interchangeable author identities.
   A review, approval, prompt, or GitHub login alone does not qualify. Do not
   add a co-author for the sake of an achievement.
 - For a commit authored by `0x0sky` with actual contribution by `x0skai`,
-  include `Co-authored-by: x0skai <300452669+x0skai@users.noreply.github.com>`.
+  include `Co-authored-by: x0skai <x0skai@aiaiaiai.org>`.
 - For a commit authored by `x0skai` with actual contribution by `0x0sky`,
-  include `Co-authored-by: 0x0sky <0x0sky@proton.me>`.
-- These are known GitHub-attributed commit addresses, not an invitation to
-  assume other addresses. Verify the exact email-to-account association if
-  it changes; use that account's confirmed GitHub noreply address when private.
+  include `Co-authored-by: 0x0sky <0x0sky@aiaiaiai.org>`.
+- These organization-domain emails are the preferred attribution addresses
+  supplied for this two-account workflow, not proof of GitHub verification.
+  Before using either for Git author or co-author attribution, confirm it is
+  added to and verified on the respective GitHub account. Until verified, use
+  that account's confirmed GitHub-associated noreply address instead.
+- When tools allow explicit Git author identity, use the connected account's
+  verified email, never impersonate the other account. A co-author belongs
+  in the trailer. Commit author/co-author emails may be public in Git history.
 - Put trailers in the *commit message*, each on its own line, after a blank
   line at the end of the message. Attribute only actual co-authors; never
   add the commit author as their own co-author or duplicate a trailer.
