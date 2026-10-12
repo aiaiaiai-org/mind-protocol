@@ -101,10 +101,30 @@ potential collaborators, not interchangeable author identities.
 - Before merge, inspect the pushed PR commit messages on GitHub, not only
   local configuration or the PR description. Confirm the intended co-author
   trailer survived. A comment, review, approval or PR body is not a substitute.
-- For **merge commits**, co-authored commits in the PR must carry their own
-  trailers; the final merge commit need not repeat them. For **squash merges**,
-  verify the proposed *final squash commit message* includes the applicable
-  trailer before merging. Use only merge methods the repository permits.
+- **Bidirectional workflow:** the authenticated agent is the primary commit
+  author. If both accounts authored parts of a change, add the other account
+  as a co-author to that original commit, in either direction, before pushing.
+- **First and last source commits:** when both accounts genuinely contributed
+  to those exact changes, record the other account as co-author in both the
+  first and last substantive PR commits. Arrange genuine collaboration before
+  the first commit and during the final change; never add filler commits.
+- **Intermediate commits:** do the same for every genuinely co-authored commit.
+  Preserve solo authorship on commits with no real second contributor.
+- **Audit before merge:** check the pushed first, last and any other joint PR
+  commits, their primary authors, trailers and linked co-author accounts.
+  Prefer linked identity or GitHub user ID over displayed names: `0x0sky`
+  is 75973992 and `x0skai` is 300452669. The name "0x0sky's bot" by
+  itself does not establish which account GitHub linked.
+- **Merge strategy:** normal merge preserves the source commits and their
+  trailers. If supported, add the genuine co-author to the final merge-commit
+  message too; do not assume this happens automatically. When squash is
+  allowed, verify the final squash commit includes the appropriate trailer.
+  Never change merge methods just to create a badge or treat the PR body as
+  co-author metadata.
+- **Audit after merge:** inspect the resulting merge/squash commit and source
+  commits for linked identities, and report GitHub co-author attribution
+  separately from Achievement award status. `Verified` confirms a commit
+  signature, not that GitHub awarded or validated co-authorship.
 - Do not manufacture commits, retroactively rewrite merged history, invent
   contributions, or block a valid solo-authored PR merely to earn a badge.
   Report verified commit attribution separately from GitHub Achievement
